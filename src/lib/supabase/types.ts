@@ -274,6 +274,20 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["achievements"]["Row"]>;
         Relationships: [];
       };
+      student_achievements: {
+        Row: {
+          id: string;
+          student_id: string;
+          achievement_id: string;
+          awarded_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["student_achievements"]["Row"]> & {
+          student_id: string;
+          achievement_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["student_achievements"]["Row"]>;
+        Relationships: [];
+      };
       leaderboards: {
         Row: {
           id: string;
@@ -390,7 +404,7 @@ export interface Database {
           id: string;
           school_id: string;
           name: string;
-          account_type: "classroom_fund" | "school_fund" | "lunch_fund" | "other";
+          account_type: "classroom_fund" | "school_fund" | "lunch_fund" | "savings" | "other";
           balance: number;
           classroom: string | null;
           created_at: string;
@@ -399,7 +413,7 @@ export interface Database {
         Insert: Partial<Database["public"]["Tables"]["finance_accounts"]["Row"]> & {
           school_id: string;
           name: string;
-          account_type: "classroom_fund" | "school_fund" | "lunch_fund" | "other";
+          account_type: "classroom_fund" | "school_fund" | "lunch_fund" | "savings" | "other";
         };
         Update: Partial<Database["public"]["Tables"]["finance_accounts"]["Row"]>;
         Relationships: [];
@@ -545,6 +559,8 @@ export interface Database {
           body: string | null;
           link: string | null;
           read_at: string | null;
+          priority: "low" | "medium" | "high" | "critical";
+          category: string | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["notifications"]["Row"]> & {
@@ -553,6 +569,71 @@ export interface Database {
           title: string;
         };
         Update: Partial<Database["public"]["Tables"]["notifications"]["Row"]>;
+        Relationships: [];
+      };
+      calendar_events: {
+        Row: {
+          id: string;
+          school_id: string;
+          created_by: string | null;
+          title: string;
+          description: string | null;
+          event_type: "exam" | "activity" | "parent_meeting" | "field_trip" | "holiday";
+          classroom: string | null;
+          starts_at: string;
+          ends_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["calendar_events"]["Row"]> & {
+          school_id: string;
+          title: string;
+          event_type: "exam" | "activity" | "parent_meeting" | "field_trip" | "holiday";
+          starts_at: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["calendar_events"]["Row"]>;
+        Relationships: [];
+      };
+      dashboard_activities: {
+        Row: {
+          id: string;
+          school_id: string;
+          actor_id: string | null;
+          student_id: string | null;
+          activity_type: "attendance" | "xp_award" | "behavior" | "health" | "finance" | "communication" | "academic";
+          description: string;
+          occurred_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["dashboard_activities"]["Row"]> & {
+          school_id: string;
+          activity_type: "attendance" | "xp_award" | "behavior" | "health" | "finance" | "communication" | "academic";
+          description: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["dashboard_activities"]["Row"]>;
+        Relationships: [];
+      };
+      dashboard_ai_insights: {
+        Row: {
+          id: string;
+          school_id: string;
+          teacher_id: string | null;
+          insight_type: "attendance_risk" | "academic_risk" | "behavior_trend" | "health_concern" | "intervention";
+          severity: "low" | "medium" | "high" | "critical";
+          student_id: string | null;
+          title: string;
+          recommendation: string;
+          dismissed_at: string | null;
+          generated_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["dashboard_ai_insights"]["Row"]> & {
+          school_id: string;
+          insight_type: "attendance_risk" | "academic_risk" | "behavior_trend" | "health_concern" | "intervention";
+          title: string;
+          recommendation: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["dashboard_ai_insights"]["Row"]>;
         Relationships: [];
       };
     };
