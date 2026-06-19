@@ -131,6 +131,7 @@ export interface Database {
           emergency_contact_name: string | null;
           emergency_contact_relationship: string | null;
           emergency_contact_phone: string | null;
+          behavior_score: number;
           created_at: string;
           updated_at: string;
         };
@@ -326,6 +327,7 @@ export interface Database {
           title: string;
           description: string | null;
           points: number;
+          evidence_url: string | null;
           occurred_at: string;
           created_at: string;
           updated_at: string;
@@ -454,6 +456,84 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["reward_shop_items"]["Row"]>;
         Relationships: [];
+      };
+      behavior_categories: {
+        Row: {
+          id: string;
+          school_id: string | null;
+          category: "positive" | "negative";
+          title: string;
+          points: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["behavior_categories"]["Row"]> & {
+          category: "positive" | "negative";
+          title: string;
+          points: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["behavior_categories"]["Row"]>;
+        Relationships: [];
+      };
+      quests: {
+        Row: {
+          id: string;
+          school_id: string;
+          period: "daily" | "weekly" | "monthly";
+          title: string;
+          description: string | null;
+          target_count: number;
+          xp_reward: number;
+          coin_reward: number;
+          badge_id: string | null;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["quests"]["Row"]> & {
+          school_id: string;
+          period: "daily" | "weekly" | "monthly";
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["quests"]["Row"]>;
+        Relationships: [];
+      };
+      student_quests: {
+        Row: {
+          id: string;
+          student_id: string;
+          quest_id: string;
+          progress_count: number;
+          completed_at: string | null;
+          period_start: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["student_quests"]["Row"]> & {
+          student_id: string;
+          quest_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["student_quests"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "student_quests_quest_id_fkey"; columns: ["quest_id"]; isOneToOne: false; referencedRelation: "quests"; referencedColumns: ["id"] }
+        ];
+      };
+      reward_redemptions: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          reward_item_id: string;
+          coin_transaction_id: string | null;
+          status: "pending" | "fulfilled" | "cancelled";
+          redeemed_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["reward_redemptions"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          reward_item_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["reward_redemptions"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "reward_redemptions_reward_item_id_fkey"; columns: ["reward_item_id"]; isOneToOne: false; referencedRelation: "reward_shop_items"; referencedColumns: ["id"] }
+        ];
       };
       subjects: {
         Row: {

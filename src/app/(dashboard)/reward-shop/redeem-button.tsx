@@ -41,13 +41,17 @@ export function RedeemButton({
     setIsSubmitting(true);
     const supabase = createClient();
 
-    const { error } = await supabase.from("coin_transactions").insert({
-      school_id: schoolId,
-      student_id: studentId,
-      amount: -costCoins,
-      reason: "แลกของรางวัล",
-      reward_item_id: itemId,
-    });
+    const { data: txn, error } = await supabase
+      .from("coin_transactions")
+      .insert({
+        school_id: schoolId,
+        student_id: studentId,
+        amount: -costCoins,
+        reason: "แลกของรางวัล",
+        reward_item_id: itemId,
+      })
+      .select()
+      .single();
 
     if (error) {
       toast.error("แลกของรางวัลไม่สำเร็จ", { description: error.message });
@@ -59,6 +63,13 @@ export function RedeemButton({
       .from("students")
       .update({ coins: student.coins - costCoins })
       .eq("id", studentId);
+
+    await supabase.from("reward_redemptions").insert({
+      school_id: schoolId,
+      student_id: studentId,
+      reward_item_id: itemId,
+      coin_transaction_id: txn?.id ?? null,
+    });
 
     toast.success("แลกของรางวัลสำเร็จ");
     setIsSubmitting(false);
