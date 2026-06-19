@@ -1,0 +1,84 @@
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+import type { Database } from "@/lib/supabase/types";
+
+// Paths that do not require an authenticated session.
+const PUBLIC_PATHS = ["/login", "/register", "/auth/callback"];
+
+// Route prefixes that require authentication (the full dashboard app).
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/students",
+  "/attendance",
+  "/behavior",
+  "/leaderboard",
+  "/reward-shop",
+  "/academic",
+  "/health",
+  "/finance",
+  "/lunch",
+  "/home-visits",
+  "/sdq",
+  "/documents",
+  "/communication",
+  "/reports",
+  "/settings",
+];
+
+/**
+ * Refreshes the Supabase auth session on every request and performs basic
+ * route guarding: unauthenticated users are redirected to /login when they
+ * try to access any protected dashboard route.
+ *
+ * NOTE: this only checks *authentication*, not per-role authorization.
+ * Fine-grained RBAC (which role can see which row) is enforced by Postgres
+ * RLS policies — see supabase/migrations/*_rls_policies.sql — and by
+ * src/lib/auth/rbac.ts for UI-level role checks (e.g. hiding nav items).
+ */
+export async function updateSession(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
+
+  const supabase = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+  const isPublicPath = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
+  const isProtectedPath = PROTECTED_PREFIXES.some((path) => pathname.startsWith(path));
+
+  if (!user && !isPublicPath && isProtectedPath) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("redirectTo", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Authenticated users hitting /login or /register are sent to the dashboard.
+  if (user && isPublicPath) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  return supabaseResponse;
+}
