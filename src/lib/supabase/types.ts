@@ -94,6 +94,34 @@ export interface Database {
           xp: number;
           coins: number;
           is_active: boolean;
+          title: string | null;
+          nationality: string | null;
+          religion: string | null;
+          province: string | null;
+          district: string | null;
+          subdistrict: string | null;
+          postal_code: string | null;
+          phone_number: string | null;
+          profile_picture_url: string | null;
+          student_number: string | null;
+          enrollment_date: string | null;
+          graduation_status: string | null;
+          learning_support_status: string | null;
+          scholarship_status: string | null;
+          family_income: number | null;
+          family_members_count: number | null;
+          housing_type: string | null;
+          internet_access: boolean | null;
+          device_ownership: string | null;
+          transportation_method: string | null;
+          risk_category: string | null;
+          poor_student_program: boolean;
+          government_support_programs: string | null;
+          risk_level: "low" | "medium" | "high" | null;
+          is_archived: boolean;
+          emergency_contact_name: string | null;
+          emergency_contact_relationship: string | null;
+          emergency_contact_phone: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -117,6 +145,9 @@ export interface Database {
           phone: string | null;
           email: string | null;
           is_primary_contact: boolean;
+          income: number | null;
+          line_id: string | null;
+          address: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -126,6 +157,24 @@ export interface Database {
           full_name: string;
         };
         Update: Partial<Database["public"]["Tables"]["parents"]["Row"]>;
+        Relationships: [];
+      };
+      student_avatars: {
+        Row: {
+          student_id: string;
+          equipped_hair: string | null;
+          equipped_uniform: string | null;
+          equipped_accessory: string | null;
+          equipped_background: string | null;
+          equipped_frame: string | null;
+          unlocked_items: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["student_avatars"]["Row"]> & {
+          student_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["student_avatars"]["Row"]>;
         Relationships: [];
       };
       attendance: {

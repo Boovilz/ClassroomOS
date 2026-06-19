@@ -1,12 +1,33 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getStudentAiSummary } from "@/lib/queries/students";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StudentFormDialog } from "@/components/students/student-form-dialog";
 
 const genderLabel: Record<string, string> = { male: "ชาย", female: "หญิง", other: "อื่นๆ" };
+const riskLabel: Record<string, string> = { low: "ต่ำ", medium: "ปานกลาง", high: "สูง" };
+const riskVariant: Record<string, "success" | "secondary" | "destructive"> = {
+  low: "success",
+  medium: "secondary",
+  high: "destructive",
+};
+const attendanceStatusLabel: Record<string, string> = {
+  present: "มา",
+  late: "มาสาย",
+  sick: "ลาป่วย",
+  personal_leave: "ลากิจ",
+  absent: "ขาด",
+};
+const attendanceStatusColor: Record<string, string> = {
+  present: "bg-emerald-green",
+  late: "bg-amber-500",
+  sick: "bg-sky-500",
+  personal_leave: "bg-violet-500",
+  absent: "bg-destructive",
+};
 
 export default async function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,42 +39,72 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     notFound();
   }
 
-  const [{ data: parents }, { data: health }, { data: scores }, { data: behaviorRecords }, { data: attendance }] =
-    await Promise.all([
-      supabase.from("parents").select("*").eq("student_id", id),
-      supabase
-        .from("health_records")
-        .select("*")
-        .eq("student_id", id)
-        .order("recorded_at", { ascending: false })
-        .limit(5),
-      supabase
-        .from("scores")
-        .select("score, max_score, term, subjects(name)")
-        .eq("student_id", id)
-        .order("created_at", { ascending: false })
-        .limit(10)
-        .returns<
-          { score: number; max_score: number; term: string | null; subjects: { name: string } | null }[]
-        >(),
-      supabase
-        .from("behavior_records")
-        .select("title, points, category, occurred_at")
-        .eq("student_id", id)
-        .order("occurred_at", { ascending: false })
-        .limit(10),
-      supabase
-        .from("attendance")
-        .select("status, date")
-        .eq("student_id", id)
-        .order("date", { ascending: false })
-        .limit(10),
-    ]);
+  const [
+    { data: parents },
+    { data: health },
+    { data: scores },
+    { data: behaviorRecords },
+    { data: attendance },
+    { data: avatar },
+    { data: achievements },
+    { data: financeTransactions },
+    { data: homeVisits },
+    { data: sdqAssessments },
+    { data: documents },
+    aiSummary,
+  ] = await Promise.all([
+    supabase.from("parents").select("*").eq("student_id", id),
+    supabase.from("health_records").select("*").eq("student_id", id).order("recorded_at", { ascending: false }).limit(10),
+    supabase
+      .from("scores")
+      .select("score, max_score, term, subjects(name)")
+      .eq("student_id", id)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .returns<
+        { score: number; max_score: number; term: string | null; subjects: { name: string } | null }[]
+      >(),
+    supabase
+      .from("behavior_records")
+      .select("title, points, category, occurred_at")
+      .eq("student_id", id)
+      .order("occurred_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("attendance")
+      .select("status, date")
+      .eq("student_id", id)
+      .order("date", { ascending: false })
+      .limit(60),
+    supabase.from("student_avatars").select("*").eq("student_id", id).maybeSingle(),
+    supabase
+      .from("student_achievements")
+      .select("awarded_at, achievements(title, description, icon, xp_reward, coin_reward)")
+      .eq("student_id", id)
+      .order("awarded_at", { ascending: false })
+      .returns<
+        {
+          awarded_at: string;
+          achievements: { title: string; description: string | null; icon: string | null; xp_reward: number; coin_reward: number } | null;
+        }[]
+      >(),
+    supabase
+      .from("finance_transactions")
+      .select("type, category, amount, description, occurred_at")
+      .eq("student_id", id)
+      .order("occurred_at", { ascending: false })
+      .limit(20),
+    supabase.from("home_visits").select("*").eq("student_id", id).order("visit_date", { ascending: false }),
+    supabase.from("sdq_assessments").select("*").eq("student_id", id).order("assessment_date", { ascending: false }),
+    supabase.from("documents").select("*").eq("student_id", id).order("created_at", { ascending: false }),
+    getStudentAiSummary(id),
+  ]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-4">
         <Avatar className="h-16 w-16">
+          <AvatarImage src={student.profile_picture_url ?? student.avatar_url ?? undefined} />
           <AvatarFallback className="text-xl">{student.full_name?.[0] ?? "น"}</AvatarFallback>
         </Avatar>
         <div>
@@ -63,22 +114,55 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             {student.classroom ?? "-"}
           </p>
         </div>
-        <Badge variant={student.is_active ? "success" : "outline"} className="ml-auto">
-          {student.is_active ? "กำลังศึกษา" : "ไม่ได้ศึกษา"}
-        </Badge>
+        <div className="ml-auto flex items-center gap-2">
+          {student.risk_level && (
+            <Badge variant={riskVariant[student.risk_level]}>ความเสี่ยง: {riskLabel[student.risk_level]}</Badge>
+          )}
+          <Badge variant={student.is_archived ? "outline" : student.is_active ? "success" : "outline"}>
+            {student.is_archived ? "เก็บถาวร" : student.is_active ? "กำลังศึกษา" : "ไม่ได้ศึกษา"}
+          </Badge>
+        </div>
         <StudentFormDialog
           schoolId={student.school_id}
           initialValues={{
             id: student.id,
             student_code: student.student_code,
+            title: student.title ?? "",
             full_name: student.full_name,
+            full_name_en: student.full_name_en ?? "",
             nickname: student.nickname ?? "",
             gender: student.gender ?? undefined,
             birth_date: student.birth_date ?? "",
+            citizen_id: student.citizen_id ?? "",
+            nationality: student.nationality ?? "",
+            religion: student.religion ?? "",
+            blood_type: student.blood_type ?? "",
+            phone_number: student.phone_number ?? "",
+            address: student.address ?? "",
+            province: student.province ?? "",
+            district: student.district ?? "",
+            subdistrict: student.subdistrict ?? "",
+            postal_code: student.postal_code ?? "",
+            emergency_contact_name: student.emergency_contact_name ?? "",
+            emergency_contact_relationship: student.emergency_contact_relationship ?? "",
+            emergency_contact_phone: student.emergency_contact_phone ?? "",
             grade: student.grade ?? "",
             classroom: student.classroom ?? "",
-            blood_type: student.blood_type ?? "",
-            address: student.address ?? "",
+            student_number: student.student_number ?? "",
+            enrollment_date: student.enrollment_date ?? "",
+            graduation_status: student.graduation_status ?? "",
+            learning_support_status: student.learning_support_status ?? "",
+            scholarship_status: student.scholarship_status ?? "",
+            risk_level: student.risk_level ?? undefined,
+            risk_category: student.risk_category ?? "",
+            family_income: student.family_income?.toString() ?? "",
+            family_members_count: student.family_members_count?.toString() ?? "",
+            housing_type: student.housing_type ?? "",
+            internet_access: student.internet_access ?? undefined,
+            device_ownership: student.device_ownership ?? "",
+            transportation_method: student.transportation_method ?? "",
+            poor_student_program: student.poor_student_program ?? false,
+            government_support_programs: student.government_support_programs ?? "",
           }}
         />
       </div>
@@ -114,66 +198,44 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         </Card>
       </div>
 
-      <Tabs defaultValue="personal">
-        <TabsList>
-          <TabsTrigger value="personal">ข้อมูลส่วนตัว</TabsTrigger>
-          <TabsTrigger value="parent">ผู้ปกครอง</TabsTrigger>
-          <TabsTrigger value="health">สุขภาพ</TabsTrigger>
+      <Tabs defaultValue="overview">
+        <TabsList className="flex w-full flex-wrap gap-1 h-auto">
+          <TabsTrigger value="overview">ภาพรวม</TabsTrigger>
+          <TabsTrigger value="parents">ผู้ปกครอง</TabsTrigger>
           <TabsTrigger value="academic">ผลการเรียน</TabsTrigger>
+          <TabsTrigger value="attendance">การเข้าเรียน</TabsTrigger>
+          <TabsTrigger value="behavior">พฤติกรรม</TabsTrigger>
+          <TabsTrigger value="rewards">XP & รางวัล</TabsTrigger>
+          <TabsTrigger value="finance">การเงิน</TabsTrigger>
+          <TabsTrigger value="health">สุขภาพ</TabsTrigger>
+          <TabsTrigger value="home-visits">เยี่ยมบ้าน</TabsTrigger>
+          <TabsTrigger value="sdq">SDQ</TabsTrigger>
+          <TabsTrigger value="documents">เอกสาร</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="personal" className="space-y-4">
+        <TabsContent value="overview" className="space-y-4">
           <Card className="glass-card">
             <CardHeader>
               <CardTitle>ที่อยู่และข้อมูลทั่วไป</CardTitle>
             </CardHeader>
             <CardContent className="space-y-1 text-sm">
               <p>ที่อยู่: {student.address ?? "-"}</p>
+              <p>
+                ตำบล/อำเภอ/จังหวัด: {student.subdistrict ?? "-"} / {student.district ?? "-"} / {student.province ?? "-"}{" "}
+                {student.postal_code ?? ""}
+              </p>
               <p>เลขประจำตัวประชาชน: {student.citizen_id ?? "-"}</p>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>บันทึกพฤติกรรมล่าสุด</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {behaviorRecords && behaviorRecords.length > 0 ? (
-                behaviorRecords.map((log, i) => (
-                  <div key={i} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
-                    <span>{log.title}</span>
-                    <Badge variant={log.category === "positive" ? "success" : "destructive"}>
-                      {log.points > 0 ? "+" : ""}
-                      {log.points}
-                    </Badge>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">ยังไม่มีบันทึกพฤติกรรม</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>ประวัติการเข้าเรียนล่าสุด</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {attendance && attendance.length > 0 ? (
-                attendance.map((a, i) => (
-                  <div key={i} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
-                    <span>{a.date}</span>
-                    <Badge variant="outline">{a.status}</Badge>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">ยังไม่มีข้อมูลการเข้าเรียน</p>
-              )}
+              <p>สัญชาติ/ศาสนา: {student.nationality ?? "-"} / {student.religion ?? "-"}</p>
+              <p>เบอร์โทรศัพท์: {student.phone_number ?? "-"}</p>
+              <p>
+                ผู้ติดต่อฉุกเฉิน: {student.emergency_contact_name ?? "-"} ({student.emergency_contact_relationship ?? "-"}) ·{" "}
+                {student.emergency_contact_phone ?? "-"}
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="parent">
+        <TabsContent value="parents">
           <Card className="glass-card">
             <CardHeader>
               <CardTitle>ข้อมูลผู้ปกครอง</CardTitle>
@@ -184,36 +246,16 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                   <div key={p.id} className="rounded-xl border border-border/60 p-3 text-sm">
                     <p className="font-medium">{p.full_name}</p>
                     <p className="text-muted-foreground">
-                      {p.relationship ?? "-"} · {p.phone ?? "-"} · {p.email ?? "-"}
+                      {p.relationship ?? "-"} · {p.phone ?? "-"} · {p.email ?? "-"} · {p.occupation ?? "-"}
                     </p>
+                    <p className="text-muted-foreground">
+                      รายได้: {p.income ? `${Number(p.income).toLocaleString()} บาท/เดือน` : "-"} · LINE: {p.line_id ?? "-"}
+                    </p>
+                    {p.address && <p className="text-muted-foreground">ที่อยู่: {p.address}</p>}
                   </div>
                 ))
               ) : (
                 <p className="text-sm text-muted-foreground">ยังไม่มีข้อมูลผู้ปกครอง</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="health">
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>บันทึกสุขภาพล่าสุด</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {health && health.length > 0 ? (
-                health.map((h) => (
-                  <div key={h.id} className="rounded-xl border border-border/60 p-3 text-sm">
-                    <p>
-                      ส่วนสูง {h.height_cm ?? "-"} ซม. · น้ำหนัก {h.weight_kg ?? "-"} กก.
-                    </p>
-                    <p className="text-muted-foreground">
-                      บันทึกเมื่อ {h.recorded_at} {h.allergies ? `· แพ้: ${h.allergies}` : ""}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">ยังไม่มีบันทึกสุขภาพ</p>
               )}
             </CardContent>
           </Card>
@@ -241,6 +283,258 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 })
               ) : (
                 <p className="text-sm text-muted-foreground">ยังไม่มีผลการเรียน</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="attendance" className="space-y-4">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>แผนภูมิการเข้าเรียน (60 วันล่าสุด)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {attendance && attendance.length > 0 ? (
+                <div className="grid grid-cols-10 gap-1.5 sm:grid-cols-15">
+                  {attendance
+                    .slice()
+                    .reverse()
+                    .map((a, i) => (
+                      <div
+                        key={i}
+                        title={`${a.date}: ${attendanceStatusLabel[a.status] ?? a.status}`}
+                        className={`h-6 w-6 rounded ${attendanceStatusColor[a.status] ?? "bg-muted"}`}
+                      />
+                    ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">ยังไม่มีข้อมูลการเข้าเรียน</p>
+              )}
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>ประวัติการเข้าเรียนล่าสุด</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {attendance && attendance.length > 0 ? (
+                attendance.slice(0, 15).map((a, i) => (
+                  <div key={i} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
+                    <span>{a.date}</span>
+                    <Badge variant="outline">{attendanceStatusLabel[a.status] ?? a.status}</Badge>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">ยังไม่มีข้อมูลการเข้าเรียน</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="behavior">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>บันทึกพฤติกรรมล่าสุด</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {behaviorRecords && behaviorRecords.length > 0 ? (
+                behaviorRecords.map((log, i) => (
+                  <div key={i} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
+                    <span>{log.title}</span>
+                    <Badge variant={log.category === "positive" ? "success" : "destructive"}>
+                      {log.points > 0 ? "+" : ""}
+                      {log.points}
+                    </Badge>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">ยังไม่มีบันทึกพฤติกรรม</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="rewards" className="space-y-4">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>ระดับและไอเทมที่สวมใส่</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1 text-sm">
+              <p>
+                Lv.{student.level} · {student.xp} XP · {student.coins} เหรียญ
+              </p>
+              {avatar ? (
+                <>
+                  <p>ทรงผม: {avatar.equipped_hair ?? "ค่าเริ่มต้น"}</p>
+                  <p>เครื่องแบบ: {avatar.equipped_uniform ?? "ค่าเริ่มต้น"}</p>
+                  <p>ของประดับ: {avatar.equipped_accessory ?? "-"}</p>
+                  <p>พื้นหลัง: {avatar.equipped_background ?? "default_bg"}</p>
+                  <p>กรอบ: {avatar.equipped_frame ?? "-"}</p>
+                </>
+              ) : (
+                <p className="text-muted-foreground">ยังไม่มีการตั้งค่าอวาตาร์ (ใช้ค่าเริ่มต้น)</p>
+              )}
+              {/* TODO: full avatar shop / equip UI — out of scope for this pass */}
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>เหรียญรางวัล/ความสำเร็จ</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {achievements && achievements.length > 0 ? (
+                achievements.map((a, i) => (
+                  <div key={i} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
+                    <span>{a.achievements?.title ?? "-"}</span>
+                    <span className="text-muted-foreground">{new Date(a.awarded_at).toLocaleDateString("th-TH")}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">ยังไม่มีความสำเร็จที่ได้รับ</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="finance">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>ธุรกรรมการเงินที่เกี่ยวข้อง</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {financeTransactions && financeTransactions.length > 0 ? (
+                financeTransactions.map((t, i) => (
+                  <div key={i} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
+                    <span>
+                      {t.category ?? (t.type === "income" ? "รายรับ" : "รายจ่าย")} · {t.occurred_at}
+                    </span>
+                    <span className={t.type === "income" ? "text-emerald-green font-medium" : "text-destructive font-medium"}>
+                      {t.type === "income" ? "+" : "-"}
+                      {Number(t.amount).toLocaleString()} บาท
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">ยังไม่มีธุรกรรมการเงินที่เกี่ยวข้องกับนักเรียนคนนี้</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="health" className="space-y-4">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>บันทึกสุขภาพล่าสุด</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {health && health.length > 0 ? (
+                health.map((h) => (
+                  <div key={h.id} className="rounded-xl border border-border/60 p-3 text-sm">
+                    <p>
+                      ส่วนสูง {h.height_cm ?? "-"} ซม. · น้ำหนัก {h.weight_kg ?? "-"} กก. · สายตา {h.vision_left ?? "-"}/{h.vision_right ?? "-"}
+                    </p>
+                    <p className="text-muted-foreground">
+                      บันทึกเมื่อ {h.recorded_at} {h.allergies ? `· แพ้: ${h.allergies}` : ""}
+                      {h.chronic_conditions ? ` · โรคประจำตัว: ${h.chronic_conditions}` : ""}
+                    </p>
+                    {h.notes && <p className="text-muted-foreground">หมายเหตุ: {h.notes}</p>}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">ยังไม่มีบันทึกสุขภาพ</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="home-visits">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>ประวัติการเยี่ยมบ้าน</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {homeVisits && homeVisits.length > 0 ? (
+                homeVisits.map((v) => (
+                  <div key={v.id} className="rounded-xl border border-border/60 p-3 text-sm">
+                    <p className="font-medium">{v.visit_date}</p>
+                    <p className="text-muted-foreground">{v.summary ?? "-"}</p>
+                    {v.family_situation && <p className="text-muted-foreground">สถานการณ์ครอบครัว: {v.family_situation}</p>}
+                    {v.follow_up_required && <Badge variant="secondary">ต้องติดตามต่อ</Badge>}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">ยังไม่มีบันทึกการเยี่ยมบ้าน</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sdq" className="space-y-4">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>สรุปข้อมูลโดย AI</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>{aiSummary.academicSummary}</p>
+              <p>{aiSummary.attendanceSummary}</p>
+              <p>{aiSummary.behaviorSummary}</p>
+              <p>{aiSummary.healthSummary}</p>
+              <p className="font-medium">คำแนะนำการติดต่อผู้ปกครอง: {aiSummary.parentCommunicationSuggestion}</p>
+              <p className="font-medium">แนวทางการช่วยเหลือที่แนะนำ: {aiSummary.recommendedIntervention}</p>
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>แบบประเมิน SDQ</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {sdqAssessments && sdqAssessments.length > 0 ? (
+                sdqAssessments.map((s) => (
+                  <div key={s.id} className="rounded-xl border border-border/60 p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">{s.assessment_date}</p>
+                      {s.risk_level && (
+                        <Badge variant={s.risk_level === "abnormal" ? "destructive" : s.risk_level === "borderline" ? "secondary" : "success"}>
+                          {s.risk_level}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-muted-foreground">
+                      คะแนนรวมความยาก: {s.total_difficulties_score ?? "-"} · อารมณ์ {s.emotional_score ?? "-"} · ความประพฤติ{" "}
+                      {s.conduct_score ?? "-"} · ไฮเปอร์ {s.hyperactivity_score ?? "-"} · เพื่อน {s.peer_problems_score ?? "-"} ·
+                      สังคม {s.prosocial_score ?? "-"}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">ยังไม่มีแบบประเมิน SDQ</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="documents">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>เอกสารของนักเรียน</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {documents && documents.length > 0 ? (
+                documents.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
+                    <div>
+                      <p className="font-medium">{d.title}</p>
+                      <p className="text-muted-foreground">{d.category ?? "ไม่ระบุหมวดหมู่"}</p>
+                    </div>
+                    {d.file_url && (
+                      <a href={d.file_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                        เปิดเอกสาร
+                      </a>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">ยังไม่มีเอกสาร</p>
               )}
             </CardContent>
           </Card>
