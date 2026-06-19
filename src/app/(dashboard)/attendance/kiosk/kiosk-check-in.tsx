@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CameraPlaceholder } from "@/components/attendance/camera-placeholder";
+import { QrScanner } from "@/components/attendance/qr-scanner";
 
 export function KioskCheckIn() {
   const [studentCode, setStudentCode] = useState("");
@@ -64,13 +64,13 @@ export function KioskCheckIn() {
   }
 
   return (
-    <Card className="glass-card mx-auto max-w-md">
+    <Card className="glass-card mx-auto w-full max-w-md">
       <CardHeader>
         <CardTitle>เช็คชื่อด้วยตนเอง</CardTitle>
-        <CardDescription>กรอกรหัสนักเรียนของคุณแล้วกดเช็คชื่อ</CardDescription>
+        <CardDescription>สแกน QR ของคุณ หรือกรอกรหัสนักเรียนแล้วกดเช็คชื่อ</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <CameraPlaceholder />
+        <QrScanner mode="morning_assembly" />
         <Input
           placeholder="รหัสนักเรียน"
           value={studentCode}

@@ -1,10 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getAttendanceReport } from "@/lib/queries/attendance";
 
 export default async function ReportsPage() {
   const supabase = await createClient();
   const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  const attendanceReport = await getAttendanceReport({ from: monthAgo, to: today });
 
   const [{ data: attendance }, { data: behavior }, { data: scores }, { data: transactions }] = await Promise.all([
     supabase.from("attendance").select("status, students(classroom)").gte("date", monthAgo).returns<
@@ -88,6 +91,51 @@ export default async function ReportsPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                    ยังไม่มีข้อมูลการเข้าเรียน
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle>รายงานการเข้าเรียนรายบุคคล (30 วันล่าสุด)</CardTitle>
+          <CardDescription>สรุปจำนวนวันมาเรียน/มาสาย/ขาด/ลา และอัตราการเข้าเรียนของนักเรียนแต่ละคน</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>รหัส</TableHead>
+                <TableHead>ชื่อ-นามสกุล</TableHead>
+                <TableHead>ห้องเรียน</TableHead>
+                <TableHead className="text-right">มาเรียน</TableHead>
+                <TableHead className="text-right">มาสาย</TableHead>
+                <TableHead className="text-right">ขาด</TableHead>
+                <TableHead className="text-right">ลา</TableHead>
+                <TableHead className="text-right">อัตราเข้าเรียน</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {attendanceReport.length > 0 ? (
+                attendanceReport.map((r) => (
+                  <TableRow key={r.student_id}>
+                    <TableCell>{r.student_code}</TableCell>
+                    <TableCell>{r.full_name}</TableCell>
+                    <TableCell>{r.classroom ?? "-"}</TableCell>
+                    <TableCell className="text-right">{r.present}</TableCell>
+                    <TableCell className="text-right">{r.late}</TableCell>
+                    <TableCell className="text-right">{r.absent}</TableCell>
+                    <TableCell className="text-right">{r.sick + r.personalLeave}</TableCell>
+                    <TableCell className="text-right">{r.attendanceRatePercent}%</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                     ยังไม่มีข้อมูลการเข้าเรียน
                   </TableCell>
                 </TableRow>

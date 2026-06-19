@@ -14,6 +14,15 @@ export type Role = "super_admin" | "school_admin" | "teacher" | "parent" | "stud
 
 export type AttendanceStatus = "present" | "late" | "sick" | "personal_leave" | "absent";
 
+export type AttendanceMode =
+  | "classroom"
+  | "morning_assembly"
+  | "subject"
+  | "lunch"
+  | "activity"
+  | "library"
+  | "event";
+
 export interface Database {
   public: {
     Tables: {
@@ -188,6 +197,10 @@ export interface Database {
           check_out_time: string | null;
           recorded_by: string | null;
           note: string | null;
+          mode: AttendanceMode;
+          method: "qr" | "manual" | "import";
+          approved_by: string | null;
+          override_note: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -210,6 +223,8 @@ export interface Database {
           source: "qr_kiosk" | "manual" | "qr_token" | "import";
           scanned_at: string;
           device_info: string | null;
+          mode: AttendanceMode;
+          result: "success" | "failed" | "duplicate";
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["attendance_logs"]["Row"]> & {
@@ -229,6 +244,8 @@ export interface Database {
           purpose: "attendance" | "kiosk_session";
           expires_at: string;
           used_at: string | null;
+          payload: string | null;
+          issued_for_academic_year: number | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["qr_tokens"]["Row"]> & {
@@ -237,6 +254,66 @@ export interface Database {
           expires_at: string;
         };
         Update: Partial<Database["public"]["Tables"]["qr_tokens"]["Row"]>;
+        Relationships: [];
+      };
+      qr_scan_history: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string | null;
+          scanned_by: string | null;
+          token_used: string | null;
+          mode: AttendanceMode;
+          status: "success" | "invalid_token" | "expired_token" | "duplicate" | "error";
+          message: string | null;
+          device_info: string | null;
+          client_scanned_at: string | null;
+          synced_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["qr_scan_history"]["Row"]> & {
+          school_id: string;
+          status: "success" | "invalid_token" | "expired_token" | "duplicate" | "error";
+        };
+        Update: Partial<Database["public"]["Tables"]["qr_scan_history"]["Row"]>;
+        Relationships: [];
+      };
+      attendance_risk_students: {
+        Row: {
+          student_id: string;
+          school_id: string;
+          risk_level: "low" | "medium" | "high";
+          consecutive_absences: number;
+          absences_last_30_days: number;
+          late_count_last_30_days: number;
+          attendance_rate_percent: number | null;
+          reason: string | null;
+          computed_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["attendance_risk_students"]["Row"]> & {
+          student_id: string;
+          school_id: string;
+          risk_level: "low" | "medium" | "high";
+        };
+        Update: Partial<Database["public"]["Tables"]["attendance_risk_students"]["Row"]>;
+        Relationships: [];
+      };
+      attendance_settings: {
+        Row: {
+          school_id: string;
+          present_cutoff_time: string;
+          late_cutoff_time: string;
+          pending_cutoff_time: string;
+          qr_token_ttl_seconds: number;
+          risk_absence_threshold: number;
+          risk_consecutive_threshold: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["attendance_settings"]["Row"]> & {
+          school_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["attendance_settings"]["Row"]>;
         Relationships: [];
       };
       behavior_records: {
