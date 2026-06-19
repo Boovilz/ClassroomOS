@@ -80,3 +80,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Shared print styles for printable documents (QR cards, report cards,
+   ปพ.5/ปพ.6, certificates). Each printable page wraps its content in
+   `.print-page` and hides chrome (sidebar/header/buttons) via `print:hidden`
+   utility classes already used elsewhere in the app. */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .print-page {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+}
+

@@ -23,6 +23,34 @@ export type AttendanceMode =
   | "library"
   | "event";
 
+export type AssessmentType = "knowledge" | "process" | "attitude" | "competency" | "characteristic";
+export type AssessmentMethod = "quiz" | "exam" | "project" | "observation" | "portfolio" | "performance_task" | "homework";
+export type GradebookComponent =
+  | "attendance"
+  | "homework"
+  | "assignment"
+  | "quiz"
+  | "midterm"
+  | "final"
+  | "project"
+  | "behavior";
+
+export interface RubricLevel {
+  label: string;
+  points: number;
+}
+
+export interface RubricCriterion {
+  name: string;
+  levels: RubricLevel[];
+}
+
+export interface RubricScoreEntry {
+  criterion: string;
+  levelLabel: string;
+  points: number;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -543,6 +571,10 @@ export interface Database {
           code: string | null;
           teacher_id: string | null;
           grade: string | null;
+          credits: number;
+          academic_year: number | null;
+          semester: 1 | 2 | null;
+          description: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -551,7 +583,35 @@ export interface Database {
           name: string;
         };
         Update: Partial<Database["public"]["Tables"]["subjects"]["Row"]>;
-        Relationships: [];
+        Relationships: [
+          { foreignKeyName: "subjects_teacher_id_fkey"; columns: ["teacher_id"]; isOneToOne: false; referencedRelation: "teachers"; referencedColumns: ["id"] }
+        ];
+      };
+      assignments: {
+        Row: {
+          id: string;
+          school_id: string;
+          subject_id: string;
+          title: string;
+          description: string | null;
+          max_score: number;
+          due_date: string | null;
+          file_url: string | null;
+          assessment_type: AssessmentType | null;
+          method: AssessmentMethod | null;
+          rubric_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["assignments"]["Row"]> & {
+          school_id: string;
+          subject_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["assignments"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "assignments_subject_id_fkey"; columns: ["subject_id"]; isOneToOne: false; referencedRelation: "subjects"; referencedColumns: ["id"] }
+        ];
       };
       scores: {
         Row: {
@@ -564,6 +624,9 @@ export interface Database {
           max_score: number;
           term: string | null;
           recorded_by: string | null;
+          assessment_type: AssessmentType | null;
+          method: AssessmentMethod | null;
+          component: GradebookComponent | null;
           created_at: string;
           updated_at: string;
         };
@@ -577,6 +640,164 @@ export interface Database {
         Relationships: [
           { foreignKeyName: "scores_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] },
           { foreignKeyName: "scores_subject_id_fkey"; columns: ["subject_id"]; isOneToOne: false; referencedRelation: "subjects"; referencedColumns: ["id"] }
+        ];
+      };
+      gradebook_weights: {
+        Row: {
+          id: string;
+          school_id: string;
+          subject_id: string;
+          attendance_weight: number;
+          homework_weight: number;
+          assignment_weight: number;
+          quiz_weight: number;
+          midterm_weight: number;
+          final_weight: number;
+          project_weight: number;
+          behavior_weight: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["gradebook_weights"]["Row"]> & {
+          school_id: string;
+          subject_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["gradebook_weights"]["Row"]>;
+        Relationships: [];
+      };
+      assignment_submissions: {
+        Row: {
+          id: string;
+          school_id: string;
+          assignment_id: string;
+          student_id: string;
+          status: "pending" | "submitted" | "late" | "graded" | "returned";
+          file_url: string | null;
+          notes: string | null;
+          submitted_at: string | null;
+          graded_at: string | null;
+          score: number | null;
+          feedback: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["assignment_submissions"]["Row"]> & {
+          school_id: string;
+          assignment_id: string;
+          student_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["assignment_submissions"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "assignment_submissions_assignment_id_fkey"; columns: ["assignment_id"]; isOneToOne: false; referencedRelation: "assignments"; referencedColumns: ["id"] }
+        ];
+      };
+      rubrics: {
+        Row: {
+          id: string;
+          school_id: string;
+          subject_id: string;
+          title: string;
+          criteria: RubricCriterion[];
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["rubrics"]["Row"]> & {
+          school_id: string;
+          subject_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["rubrics"]["Row"]>;
+        Relationships: [];
+      };
+      rubric_scores: {
+        Row: {
+          id: string;
+          school_id: string;
+          rubric_id: string;
+          student_id: string;
+          assignment_id: string | null;
+          scores: RubricScoreEntry[];
+          total_score: number;
+          scored_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["rubric_scores"]["Row"]> & {
+          school_id: string;
+          rubric_id: string;
+          student_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["rubric_scores"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "rubric_scores_rubric_id_fkey"; columns: ["rubric_id"]; isOneToOne: false; referencedRelation: "rubrics"; referencedColumns: ["id"] }
+        ];
+      };
+      learning_standards: {
+        Row: {
+          id: string;
+          school_id: string;
+          subject_id: string;
+          code: string;
+          description: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["learning_standards"]["Row"]> & {
+          school_id: string;
+          subject_id: string;
+          code: string;
+          description: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["learning_standards"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "learning_standards_subject_id_fkey"; columns: ["subject_id"]; isOneToOne: false; referencedRelation: "subjects"; referencedColumns: ["id"] }
+        ];
+      };
+      learning_outcomes: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          standard_id: string;
+          status: "achieved" | "partially_achieved" | "needs_improvement";
+          assessed_at: string;
+          assessed_by: string | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["learning_outcomes"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          standard_id: string;
+          status: "achieved" | "partially_achieved" | "needs_improvement";
+        };
+        Update: Partial<Database["public"]["Tables"]["learning_outcomes"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "learning_outcomes_standard_id_fkey"; columns: ["standard_id"]; isOneToOne: false; referencedRelation: "learning_standards"; referencedColumns: ["id"] }
+        ];
+      };
+      academic_certificates: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          template_type: "graduation" | "honor_roll" | "perfect_attendance" | "subject_excellence" | "completion" | "other";
+          title: string;
+          description: string | null;
+          issued_at: string;
+          issued_by: string | null;
+          file_url: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["academic_certificates"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          template_type: "graduation" | "honor_roll" | "perfect_attendance" | "subject_excellence" | "completion" | "other";
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["academic_certificates"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "academic_certificates_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
         ];
       };
       health_records: {
@@ -613,6 +834,9 @@ export interface Database {
           account_type: "classroom_fund" | "school_fund" | "lunch_fund" | "savings" | "other";
           balance: number;
           classroom: string | null;
+          student_id: string | null;
+          account_number: string | null;
+          status: "active" | "frozen" | "closed";
           created_at: string;
           updated_at: string;
         };
@@ -622,7 +846,9 @@ export interface Database {
           account_type: "classroom_fund" | "school_fund" | "lunch_fund" | "savings" | "other";
         };
         Update: Partial<Database["public"]["Tables"]["finance_accounts"]["Row"]>;
-        Relationships: [];
+        Relationships: [
+          { foreignKeyName: "finance_accounts_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
+        ];
       };
       finance_transactions: {
         Row: {
@@ -636,6 +862,13 @@ export interface Database {
           description: string | null;
           recorded_by: string | null;
           occurred_at: string;
+          transaction_no: string | null;
+          balance_after: number | null;
+          status: "pending" | "completed" | "rejected" | "cancelled";
+          txn_subtype: "deposit" | "withdrawal" | "expense" | "donation" | "fund_income" | null;
+          approved_by: string | null;
+          approved_at: string | null;
+          rejection_reason: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -649,6 +882,167 @@ export interface Database {
         Relationships: [
           { foreignKeyName: "finance_transactions_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "finance_accounts"; referencedColumns: ["id"] }
         ];
+      };
+      finance_categories: {
+        Row: {
+          id: string;
+          school_id: string | null;
+          kind: "income" | "expense";
+          name: string;
+          icon: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_categories"]["Row"]> & {
+          kind: "income" | "expense";
+          name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_categories"]["Row"]>;
+        Relationships: [];
+      };
+      finance_expenses: {
+        Row: {
+          id: string;
+          school_id: string;
+          account_id: string;
+          category_id: string | null;
+          finance_transaction_id: string | null;
+          name: string;
+          amount: number;
+          expense_date: string;
+          receipt_url: string | null;
+          description: string | null;
+          requested_by: string | null;
+          approved_by: string | null;
+          approved_at: string | null;
+          status: "pending" | "approved" | "rejected";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_expenses"]["Row"]> & {
+          school_id: string;
+          account_id: string;
+          name: string;
+          amount: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_expenses"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "finance_expenses_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "finance_accounts"; referencedColumns: ["id"] },
+          { foreignKeyName: "finance_expenses_category_id_fkey"; columns: ["category_id"]; isOneToOne: false; referencedRelation: "finance_categories"; referencedColumns: ["id"] }
+        ];
+      };
+      finance_receipts: {
+        Row: {
+          id: string;
+          school_id: string;
+          receipt_no: string;
+          receipt_type: "deposit" | "withdrawal" | "expense" | "donation";
+          finance_transaction_id: string | null;
+          finance_expense_id: string | null;
+          issued_to: string | null;
+          amount: number;
+          verification_code: string;
+          issued_by: string | null;
+          issued_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_receipts"]["Row"]> & {
+          school_id: string;
+          receipt_no: string;
+          receipt_type: "deposit" | "withdrawal" | "expense" | "donation";
+          amount: number;
+          verification_code: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_receipts"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "finance_receipts_finance_transaction_id_fkey"; columns: ["finance_transaction_id"]; isOneToOne: false; referencedRelation: "finance_transactions"; referencedColumns: ["id"] }
+        ];
+      };
+      finance_qr_payments: {
+        Row: {
+          id: string;
+          school_id: string;
+          purpose: "school_activity" | "fundraising" | "donation" | "field_trip" | "other";
+          title: string;
+          description: string | null;
+          qr_type: "static" | "dynamic";
+          target_amount: number | null;
+          amount: number | null;
+          payload: string;
+          status: "active" | "paid" | "expired" | "cancelled";
+          created_by: string | null;
+          paid_at: string | null;
+          expires_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_qr_payments"]["Row"]> & {
+          school_id: string;
+          purpose: "school_activity" | "fundraising" | "donation" | "field_trip" | "other";
+          title: string;
+          payload: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_qr_payments"]["Row"]>;
+        Relationships: [];
+      };
+      finance_goals: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          account_id: string | null;
+          title: string;
+          target_amount: number;
+          current_amount: number;
+          target_date: string | null;
+          status: "active" | "achieved" | "cancelled";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_goals"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          title: string;
+          target_amount: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_goals"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "finance_goals_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
+        ];
+      };
+      finance_goal_progress: {
+        Row: {
+          id: string;
+          goal_id: string;
+          finance_transaction_id: string | null;
+          amount: number;
+          recorded_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_goal_progress"]["Row"]> & {
+          goal_id: string;
+          amount: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_goal_progress"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "finance_goal_progress_goal_id_fkey"; columns: ["goal_id"]; isOneToOne: false; referencedRelation: "finance_goals"; referencedColumns: ["id"] }
+        ];
+      };
+      finance_audit_logs: {
+        Row: {
+          id: string;
+          school_id: string;
+          actor_id: string | null;
+          action: "create" | "update" | "delete" | "approve" | "reject";
+          entity_type: string;
+          entity_id: string | null;
+          details: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_audit_logs"]["Row"]> & {
+          school_id: string;
+          action: "create" | "update" | "delete" | "approve" | "reject";
+          entity_type: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_audit_logs"]["Row"]>;
+        Relationships: [];
       };
       meal_records: {
         Row: {

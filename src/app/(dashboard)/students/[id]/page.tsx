@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getStudentAiSummary } from "@/lib/queries/students";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StudentFormDialog } from "@/components/students/student-form-dialog";
+import { Button } from "@/components/ui/button";
+import { LearningOutcomesTracker } from "@/components/academic/learning-outcomes-tracker";
+import { getLearningOutcomes } from "@/lib/queries/academic";
 
 const genderLabel: Record<string, string> = { male: "ชาย", female: "หญิง", other: "อื่นๆ" };
 const riskLabel: Record<string, string> = { low: "ต่ำ", medium: "ปานกลาง", high: "สูง" };
@@ -99,6 +103,8 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     supabase.from("documents").select("*").eq("student_id", id).order("created_at", { ascending: false }),
     getStudentAiSummary(id),
   ]);
+
+  const learningOutcomes = await getLearningOutcomes(id);
 
   return (
     <div className="space-y-6">
@@ -261,7 +267,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           </Card>
         </TabsContent>
 
-        <TabsContent value="academic">
+        <TabsContent value="academic" className="space-y-4">
           <Card className="glass-card">
             <CardHeader>
               <CardTitle>ผลการเรียนล่าสุด</CardTitle>
@@ -284,6 +290,36 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
               ) : (
                 <p className="text-sm text-muted-foreground">ยังไม่มีผลการเรียน</p>
               )}
+            </CardContent>
+          </Card>
+
+          <LearningOutcomesTracker
+            outcomes={(
+              learningOutcomes as unknown as {
+                status: string;
+                learning_standards: { code: string; description: string } | null;
+              }[]
+            ).map((o) => ({
+              code: o.learning_standards?.code ?? "-",
+              description: o.learning_standards?.description ?? "-",
+              status: o.status,
+            }))}
+          />
+
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>เอกสารผลการเรียน</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button asChild variant="outline">
+                <Link href={`/students/${id}/report-card`}>สมุดรายงานผลการเรียน</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={`/students/${id}/pp5`}>ปพ.5</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={`/students/${id}/pp6`}>ปพ.6</Link>
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
