@@ -41,31 +41,37 @@ export function StudentsTable({ data }: { data: StudentRow[] }) {
   const [filter, setFilter] = useState("");
   const router = useRouter();
 
-  async function handleArchiveToggle(student: StudentRow) {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("students")
-      .update({ is_archived: !student.is_archived })
-      .eq("id", student.id);
-    if (error) {
-      toast.error("ดำเนินการไม่สำเร็จ", { description: error.message });
-      return;
-    }
-    toast.success(student.is_archived ? "กู้คืนนักเรียนแล้ว" : "เก็บถาวรนักเรียนแล้ว");
-    router.refresh();
-  }
+  const handleArchiveToggle = useCallback(
+    async (student: StudentRow) => {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("students")
+        .update({ is_archived: !student.is_archived })
+        .eq("id", student.id);
+      if (error) {
+        toast.error("ดำเนินการไม่สำเร็จ", { description: error.message });
+        return;
+      }
+      toast.success(student.is_archived ? "กู้คืนนักเรียนแล้ว" : "เก็บถาวรนักเรียนแล้ว");
+      router.refresh();
+    },
+    [router]
+  );
 
-  async function handleDelete(student: StudentRow) {
-    if (!window.confirm(`ยืนยันการลบ "${student.full_name}" ออกจากระบบอย่างถาวร?`)) return;
-    const supabase = createClient();
-    const { error } = await supabase.from("students").delete().eq("id", student.id);
-    if (error) {
-      toast.error("ลบไม่สำเร็จ", { description: error.message });
-      return;
-    }
-    toast.success("ลบนักเรียนแล้ว");
-    router.refresh();
-  }
+  const handleDelete = useCallback(
+    async (student: StudentRow) => {
+      if (!window.confirm(`ยืนยันการลบ "${student.full_name}" ออกจากระบบอย่างถาวร?`)) return;
+      const supabase = createClient();
+      const { error } = await supabase.from("students").delete().eq("id", student.id);
+      if (error) {
+        toast.error("ลบไม่สำเร็จ", { description: error.message });
+        return;
+      }
+      toast.success("ลบนักเรียนแล้ว");
+      router.refresh();
+    },
+    [router]
+  );
 
   const columns = useMemo<ColumnDef<StudentRow>[]>(
     () => [
@@ -164,7 +170,7 @@ export function StudentsTable({ data }: { data: StudentRow[] }) {
         },
       },
     ],
-    []
+    [handleArchiveToggle, handleDelete]
   );
 
   const table = useReactTable({
