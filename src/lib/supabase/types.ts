@@ -814,6 +814,10 @@ export interface Database {
           notes: string | null;
           recorded_by: string | null;
           recorded_at: string;
+          bmi: number | null;
+          nutrition_status: "severely_underweight" | "underweight" | "normal" | "overweight" | "obese" | null;
+          vision_screening_result: string | null;
+          remarks: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -824,6 +828,204 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["health_records"]["Row"]>;
         Relationships: [
           { foreignKeyName: "health_records_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
+        ];
+      };
+      vaccinations: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          vaccine_name: string;
+          dose_number: number | null;
+          administered_at: string | null;
+          next_due_at: string | null;
+          notes: string | null;
+          status: "scheduled" | "completed" | "overdue" | "exempted";
+          hospital: string | null;
+          recorded_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["vaccinations"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          vaccine_name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["vaccinations"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "vaccinations_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
+        ];
+      };
+      vaccination_schedules: {
+        Row: {
+          id: string;
+          school_id: string | null;
+          vaccine_name: string;
+          dose_number: number;
+          recommended_age_months: number | null;
+          is_required: boolean;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["vaccination_schedules"]["Row"]> & {
+          vaccine_name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["vaccination_schedules"]["Row"]>;
+        Relationships: [];
+      };
+      medical_conditions: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          condition_type: "chronic" | "congenital" | "physical_disability" | "learning_disability" | "mental_health";
+          name: string;
+          severity: "mild" | "moderate" | "severe";
+          diagnosed_date: string | null;
+          notes: string | null;
+          care_instructions: string | null;
+          is_active: boolean;
+          recorded_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["medical_conditions"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          condition_type: "chronic" | "congenital" | "physical_disability" | "learning_disability" | "mental_health";
+          name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["medical_conditions"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "medical_conditions_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
+        ];
+      };
+      allergies: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          allergy_type: "food" | "drug" | "environmental";
+          allergen: string;
+          severity: "mild" | "moderate" | "severe" | "life_threatening";
+          reaction: string | null;
+          emergency_instructions: string | null;
+          is_active: boolean;
+          recorded_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["allergies"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          allergy_type: "food" | "drug" | "environmental";
+          allergen: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["allergies"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "allergies_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
+        ];
+      };
+      health_screenings: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          screening_type: "vision" | "hearing" | "dental" | "physical" | "mental_health";
+          screening_date: string;
+          result: "pass" | "monitor" | "refer";
+          findings: string | null;
+          recommendation: string | null;
+          next_screening_date: string | null;
+          recorded_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["health_screenings"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          screening_type: "vision" | "hearing" | "dental" | "physical" | "mental_health";
+          result: "pass" | "monitor" | "refer";
+        };
+        Update: Partial<Database["public"]["Tables"]["health_screenings"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "health_screenings_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
+        ];
+      };
+      dental_records: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          checkup_date: string;
+          tooth_decay_count: number;
+          oral_hygiene_status: "good" | "fair" | "poor";
+          treatment_needed: string | null;
+          treatment_completed: boolean;
+          notes: string | null;
+          recorded_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["dental_records"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["dental_records"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "dental_records_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
+        ];
+      };
+      medications: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          medication_name: string;
+          dosage: string | null;
+          schedule: string | null;
+          prescribing_doctor: string | null;
+          instructions: string | null;
+          start_date: string | null;
+          end_date: string | null;
+          is_active: boolean;
+          special_care_notes: string | null;
+          recorded_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["medications"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          medication_name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["medications"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "medications_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
+        ];
+      };
+      health_alerts: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          alert_type: "missing_record" | "vaccination_due" | "bmi_risk" | "medical_condition_risk" | "screening_due" | "allergy_alert";
+          severity: "low" | "medium" | "high" | "critical";
+          message: string;
+          is_resolved: boolean;
+          resolved_by: string | null;
+          resolved_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["health_alerts"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          alert_type: "missing_record" | "vaccination_due" | "bmi_risk" | "medical_condition_risk" | "screening_due" | "allergy_alert";
+          message: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["health_alerts"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "health_alerts_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
         ];
       };
       finance_accounts: {
