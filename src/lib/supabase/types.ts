@@ -430,6 +430,131 @@ export interface Database {
           { foreignKeyName: "finance_transactions_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "finance_accounts"; referencedColumns: ["id"] }
         ];
       };
+      meal_records: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          date: string;
+          meal_type: "breakfast" | "lunch" | "snack";
+          status: "served" | "absent" | "special_diet";
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["meal_records"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          date: string;
+          meal_type: "breakfast" | "lunch" | "snack";
+        };
+        Update: Partial<Database["public"]["Tables"]["meal_records"]["Row"]>;
+        Relationships: [];
+      };
+      home_visits: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          teacher_id: string | null;
+          visit_date: string;
+          summary: string | null;
+          family_situation: string | null;
+          follow_up_required: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["home_visits"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          visit_date: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["home_visits"]["Row"]>;
+        Relationships: [];
+      };
+      sdq_assessments: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          assessed_by: string | null;
+          assessment_date: string;
+          emotional_score: number | null;
+          conduct_score: number | null;
+          hyperactivity_score: number | null;
+          peer_problems_score: number | null;
+          prosocial_score: number | null;
+          total_difficulties_score: number | null;
+          risk_level: "normal" | "borderline" | "abnormal" | null;
+          raw_answers: Record<string, number> | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["sdq_assessments"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["sdq_assessments"]["Row"]>;
+        Relationships: [];
+      };
+      documents: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string | null;
+          uploaded_by: string | null;
+          title: string;
+          category: string | null;
+          file_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["documents"]["Row"]> & {
+          school_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["documents"]["Row"]>;
+        Relationships: [];
+      };
+      announcements: {
+        Row: {
+          id: string;
+          school_id: string;
+          created_by: string | null;
+          title: string;
+          body: string;
+          audience: "all" | "teachers" | "parents" | "students";
+          published_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["announcements"]["Row"]> & {
+          school_id: string;
+          title: string;
+          body: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["announcements"]["Row"]>;
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          school_id: string;
+          user_id: string;
+          title: string;
+          body: string | null;
+          link: string | null;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["notifications"]["Row"]> & {
+          school_id: string;
+          user_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notifications"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

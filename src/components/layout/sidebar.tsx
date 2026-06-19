@@ -14,6 +14,11 @@ import {
   FileText,
   MessageCircle,
   Settings,
+  Trophy,
+  Gift,
+  Utensils,
+  ClipboardList,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,12 +27,17 @@ const NAV_ITEMS = [
   { href: "/students", label: "นักเรียน", icon: GraduationCap },
   { href: "/attendance", label: "การเช็คชื่อ", icon: CheckSquare },
   { href: "/behavior", label: "พฤติกรรม & XP", icon: Star },
+  { href: "/leaderboard", label: "กระดานผู้นำ", icon: Trophy },
+  { href: "/reward-shop", label: "ร้านค้ารางวัล", icon: Gift },
   { href: "/academic", label: "ผลการเรียน", icon: BookOpen },
   { href: "/finance", label: "การเงินห้องเรียน", icon: Wallet },
   { href: "/health", label: "สุขภาพนักเรียน", icon: HeartPulse },
+  { href: "/lunch", label: "อาหารกลางวัน", icon: Utensils },
   { href: "/home-visits", label: "เยี่ยมบ้าน", icon: Home },
+  { href: "/sdq", label: "ประเมิน SDQ", icon: ClipboardList },
   { href: "/documents", label: "เอกสาร", icon: FileText },
   { href: "/communication", label: "สื่อสารผู้ปกครอง", icon: MessageCircle },
+  { href: "/reports", label: "รายงาน", icon: BarChart3 },
   { href: "/settings", label: "ตั้งค่า", icon: Settings },
 ];
 
