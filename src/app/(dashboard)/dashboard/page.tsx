@@ -34,19 +34,19 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard title="นักเรียนทั้งหมด" value={summary.totalStudents} icon={Users} accent="primary" />
+        <SummaryCard title="นักเรียนทั้งหมด" value={summary.totalStudents} icon={<Users className="h-6 w-6" />} accent="primary" />
         <SummaryCard
           title="เข้าเรียนวันนี้"
           value={`${summary.presentToday} / ${summary.totalStudents}`}
-          icon={ClipboardCheck}
+          icon={<ClipboardCheck className="h-6 w-6" />}
           accent="secondary"
           hint={`${summary.attendanceRatePercent}% ของนักเรียนทั้งหมด`}
         />
-        <SummaryCard title="พฤติกรรมสัปดาห์นี้" value={summary.behaviorEventsThisWeek} icon={Star} accent="accent" />
+        <SummaryCard title="พฤติกรรมสัปดาห์นี้" value={summary.behaviorEventsThisWeek} icon={<Star className="h-6 w-6" />} accent="accent" />
         <SummaryCard
           title="XP / เหรียญสะสมรวม"
           value={`${summary.totalXp.toLocaleString()} XP`}
-          icon={Coins}
+          icon={<Coins className="h-6 w-6" />}
           accent="primary"
           hint={`${summary.totalCoins.toLocaleString()} เหรียญ`}
         />
