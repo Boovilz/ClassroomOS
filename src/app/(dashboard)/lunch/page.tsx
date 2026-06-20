@@ -1,9 +1,33 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { MealRecordFormDialog } from "./meal-record-form-dialog";
 import { getActiveAllergyMap } from "@/lib/queries/health";
+import { getLunchDashboard, getAiNutritionAnalysis } from "@/lib/queries/lunch";
+import {
+  CalendarDays,
+  QrCode,
+  ClipboardCheck,
+  Boxes,
+  Truck,
+  ShieldCheck,
+  BarChart3,
+  Users,
+} from "lucide-react";
+
+const lunchSubPages = [
+  { href: "/lunch/menu", label: "เมนูอาหาร", icon: CalendarDays },
+  { href: "/lunch/distribute", label: "แจกอาหาร (QR)", icon: QrCode },
+  { href: "/lunch/eligibility", label: "สิทธิ์รับอาหาร", icon: ClipboardCheck },
+  { href: "/lunch/inventory", label: "คลังวัตถุดิบ", icon: Boxes },
+  { href: "/lunch/suppliers", label: "จัดซื้อ/ผู้จำหน่าย", icon: Truck },
+  { href: "/lunch/food-safety", label: "ความปลอดภัยอาหาร", icon: ShieldCheck },
+  { href: "/lunch/analytics", label: "วิเคราะห์ข้อมูล", icon: BarChart3 },
+  { href: "/lunch/parent", label: "พอร์ทัลผู้ปกครอง", icon: Users },
+];
 
 const mealTypeLabel: Record<string, string> = {
   breakfast: "อาหารเช้า",
@@ -50,24 +74,38 @@ export default async function LunchPage() {
 
   const todayCount = records?.filter((r) => r.date === today && r.status === "served").length ?? 0;
   const allergyMap = await getActiveAllergyMap((students ?? []).map((s) => s.id));
+  const dashboard = profile?.school_id ? await getLunchDashboard() : null;
+  const aiInsights = profile?.school_id ? await getAiNutritionAnalysis(profile.school_id).catch(() => []) : [];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">ระบบอาหารกลางวัน</h1>
-          <p className="text-sm text-muted-foreground">บันทึกการรับอาหารและกองทุนอาหารกลางวัน</p>
+          <p className="text-sm text-muted-foreground">โภชนาการ เมนู คลังวัตถุดิบ และการแจกอาหารกลางวันด้วย QR</p>
         </div>
         {profile?.school_id && <MealRecordFormDialog schoolId={profile.school_id} students={students ?? []} />}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {lunchSubPages.map(({ href, label, icon: Icon }) => (
+          <Link key={href} href={href}>
+            <Button variant="outline" className="glass-card h-auto w-full flex-col gap-2 py-4">
+              <Icon className="h-5 w-5 text-primary" />
+              <span className="text-xs">{label}</span>
+            </Button>
+          </Link>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="text-base">รับอาหารวันนี้</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-primary">{todayCount} คน</p>
+            {dashboard && <p className="text-xs text-muted-foreground">ขาดรับ {dashboard.studentsAbsent} คน</p>}
           </CardContent>
         </Card>
         <Card className="glass-card">
@@ -80,7 +118,38 @@ export default async function LunchPage() {
             </p>
           </CardContent>
         </Card>
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="text-base">วัตถุดิบเหลือน้อย/ใกล้หมดอายุ</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-primary">{dashboard ? dashboard.lowStockCount + dashboard.nearExpiryCount : 0} รายการ</p>
+          </CardContent>
+        </Card>
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="text-base">นักเรียนอาหารพิเศษ</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-primary">{dashboard?.specialDietCount ?? 0} คน</p>
+          </CardContent>
+        </Card>
       </div>
+
+      {aiInsights.length > 0 && (
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="text-base">ข้อมูลเชิงวิเคราะห์ด้านโภชนาการ (AI)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+              {aiInsights.map((insight, i) => (
+                <li key={i}>{insight}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="glass-card">
         <CardHeader>

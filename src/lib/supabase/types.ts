@@ -905,20 +905,22 @@ export interface Database {
           id: string;
           school_id: string;
           student_id: string;
-          allergy_type: "food" | "drug" | "environmental";
+          allergy_type: "food" | "drug" | "environmental" | "religious" | "medical_diet" | "nutrition_plan";
           allergen: string;
           severity: "mild" | "moderate" | "severe" | "life_threatening";
           reaction: string | null;
           emergency_instructions: string | null;
           is_active: boolean;
           recorded_by: string | null;
+          diet_label: string | null;
+          show_at_meal_distribution: boolean;
           created_at: string;
           updated_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["allergies"]["Row"]> & {
           school_id: string;
           student_id: string;
-          allergy_type: "food" | "drug" | "environmental";
+          allergy_type: "food" | "drug" | "environmental" | "religious" | "medical_diet" | "nutrition_plan";
           allergen: string;
         };
         Update: Partial<Database["public"]["Tables"]["allergies"]["Row"]>;
@@ -1255,6 +1257,11 @@ export interface Database {
           meal_type: "breakfast" | "lunch" | "snack";
           status: "served" | "absent" | "special_diet";
           notes: string | null;
+          menu_id: string | null;
+          distribution_method: "qr" | "student_id" | "manual";
+          distributed_by: string | null;
+          eligibility_status_snapshot: string | null;
+          cost: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -1265,6 +1272,212 @@ export interface Database {
           meal_type: "breakfast" | "lunch" | "snack";
         };
         Update: Partial<Database["public"]["Tables"]["meal_records"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "meal_records_menu_id_fkey"; columns: ["menu_id"]; isOneToOne: false; referencedRelation: "menus"; referencedColumns: ["id"] }
+        ];
+      };
+      menus: {
+        Row: {
+          id: string;
+          school_id: string;
+          name: string;
+          menu_date: string;
+          meal_type: "breakfast" | "lunch" | "snack";
+          plan_scope: "daily" | "weekly" | "monthly" | "semester";
+          description: string | null;
+          image_url: string | null;
+          total_calories: number | null;
+          total_protein_g: number | null;
+          total_carbs_g: number | null;
+          total_fat_g: number | null;
+          estimated_cost_per_student: number | null;
+          status: "planned" | "published" | "served" | "cancelled";
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["menus"]["Row"]> & {
+          school_id: string;
+          name: string;
+          menu_date: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["menus"]["Row"]>;
+        Relationships: [];
+      };
+      menu_items: {
+        Row: {
+          id: string;
+          school_id: string;
+          menu_id: string;
+          name: string;
+          category: "rice" | "noodle" | "soup" | "dessert" | "fruit" | "milk";
+          ingredients: string | null;
+          calories: number | null;
+          protein_g: number | null;
+          carbs_g: number | null;
+          fat_g: number | null;
+          has_vegetables: boolean;
+          has_fruit: boolean;
+          has_milk: boolean;
+          image_url: string | null;
+          cost_per_serving: number | null;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["menu_items"]["Row"]> & {
+          school_id: string;
+          menu_id: string;
+          name: string;
+          category: "rice" | "noodle" | "soup" | "dessert" | "fruit" | "milk";
+        };
+        Update: Partial<Database["public"]["Tables"]["menu_items"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "menu_items_menu_id_fkey"; columns: ["menu_id"]; isOneToOne: false; referencedRelation: "menus"; referencedColumns: ["id"] }
+        ];
+      };
+      meal_eligibility: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          program_type: "free_lunch" | "special_support" | "scholarship" | "paid";
+          status: "eligible" | "not_eligible" | "pending_review";
+          meal_restrictions: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          effective_from: string;
+          effective_to: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["meal_eligibility"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["meal_eligibility"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "meal_eligibility_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
+        ];
+      };
+      food_inventory: {
+        Row: {
+          id: string;
+          school_id: string;
+          item_name: string;
+          category: "ingredient" | "supply" | "kitchen_material";
+          quantity: number;
+          unit: string;
+          reorder_level: number;
+          purchase_date: string | null;
+          expiration_date: string | null;
+          supplier_id: string | null;
+          unit_cost: number | null;
+          notes: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["food_inventory"]["Row"]> & {
+          school_id: string;
+          item_name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["food_inventory"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "food_inventory_supplier_id_fkey"; columns: ["supplier_id"]; isOneToOne: false; referencedRelation: "food_suppliers"; referencedColumns: ["id"] }
+        ];
+      };
+      inventory_transactions: {
+        Row: {
+          id: string;
+          school_id: string;
+          inventory_id: string;
+          txn_type: "add" | "remove" | "adjust" | "transfer" | "audit";
+          quantity_change: number;
+          quantity_after: number;
+          reason: string | null;
+          recorded_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["inventory_transactions"]["Row"]> & {
+          school_id: string;
+          inventory_id: string;
+          txn_type: "add" | "remove" | "adjust" | "transfer" | "audit";
+          quantity_change: number;
+          quantity_after: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["inventory_transactions"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "inventory_transactions_inventory_id_fkey"; columns: ["inventory_id"]; isOneToOne: false; referencedRelation: "food_inventory"; referencedColumns: ["id"] }
+        ];
+      };
+      food_suppliers: {
+        Row: {
+          id: string;
+          school_id: string;
+          name: string;
+          contact_name: string | null;
+          phone: string | null;
+          email: string | null;
+          address: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["food_suppliers"]["Row"]> & {
+          school_id: string;
+          name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["food_suppliers"]["Row"]>;
+        Relationships: [];
+      };
+      purchase_orders: {
+        Row: {
+          id: string;
+          school_id: string;
+          supplier_id: string;
+          order_no: string;
+          item_summary: string | null;
+          total_amount: number;
+          status: "draft" | "ordered" | "delivered" | "invoiced" | "paid" | "cancelled";
+          ordered_at: string;
+          expected_delivery_date: string | null;
+          delivered_at: string | null;
+          finance_expense_id: string | null;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["purchase_orders"]["Row"]> & {
+          school_id: string;
+          supplier_id: string;
+          order_no: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["purchase_orders"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "purchase_orders_supplier_id_fkey"; columns: ["supplier_id"]; isOneToOne: false; referencedRelation: "food_suppliers"; referencedColumns: ["id"] }
+        ];
+      };
+      food_safety_logs: {
+        Row: {
+          id: string;
+          school_id: string;
+          log_type: "inspection" | "hygiene" | "equipment_maintenance" | "temperature" | "cleaning_schedule";
+          log_date: string;
+          subject: string;
+          result: "pass" | "fail" | "needs_attention" | null;
+          temperature_celsius: number | null;
+          notes: string | null;
+          recorded_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["food_safety_logs"]["Row"]> & {
+          school_id: string;
+          log_type: "inspection" | "hygiene" | "equipment_maintenance" | "temperature" | "cleaning_schedule";
+          subject: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["food_safety_logs"]["Row"]>;
         Relationships: [];
       };
       home_visits: {
