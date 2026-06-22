@@ -43,6 +43,23 @@ export default function LoginPage() {
           entityId: data.user.id,
         });
       }
+      // Login monitoring (Security page) - best-effort, never blocks login.
+      // IP address is not reliably available client-side; left null here
+      // (a server-side login route could capture it from request headers,
+      // but the existing login flow is a client component calling
+      // supabase-js directly, so we keep that pattern and only add the
+      // device/user-agent field we can read for free).
+      void supabase
+        .from("login_logs")
+        .insert({
+          school_id: profile?.school_id ?? null,
+          user_id: data.user.id,
+          success: true,
+          user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+        })
+        .then(({ error: logErr }) => {
+          if (logErr) console.error("login_logs insert failed:", logErr.message);
+        });
     }
     router.push("/dashboard");
   }

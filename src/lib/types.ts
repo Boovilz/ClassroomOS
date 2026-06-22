@@ -3,7 +3,12 @@ export type Role =
   | "school_admin"
   | "teacher"
   | "parent"
-  | "student";
+  | "student"
+  | "principal"
+  | "homeroom_teacher"
+  | "finance_officer"
+  | "health_officer"
+  | "guidance_teacher";
 
 export type AttendanceStatus = "present" | "late" | "sick" | "personal_leave" | "absent";
 

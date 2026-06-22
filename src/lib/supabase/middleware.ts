@@ -27,7 +27,13 @@ const PROTECTED_PREFIXES = [
   "/communication",
   "/reports",
   "/settings",
+  "/admin",
 ];
+
+// Prefixes that require role === 'super_admin' specifically (the
+// multi-school super admin console). Checked in addition to the generic
+// auth/onboarding guard below; non-super-admins are bounced to /dashboard.
+const SUPER_ADMIN_ONLY_PREFIXES = ["/admin"];
 
 /**
  * Refreshes the Supabase auth session on every request and performs basic
@@ -94,6 +100,14 @@ export async function updateSession(request: NextRequest) {
     if (profile && !profile.school_id && profile.role !== "super_admin") {
       const url = request.nextUrl.clone();
       url.pathname = ONBOARDING_PATH;
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    const isSuperAdminOnlyPath = SUPER_ADMIN_ONLY_PREFIXES.some((path) => pathname.startsWith(path));
+    if (isSuperAdminOnlyPath && profile?.role !== "super_admin") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
       url.search = "";
       return NextResponse.redirect(url);
     }

@@ -10,7 +10,17 @@
  * not yet queried anywhere.
  */
 
-export type Role = "super_admin" | "school_admin" | "teacher" | "parent" | "student";
+export type Role =
+  | "super_admin"
+  | "school_admin"
+  | "teacher"
+  | "parent"
+  | "student"
+  | "principal"
+  | "homeroom_teacher"
+  | "finance_officer"
+  | "health_officer"
+  | "guidance_teacher";
 
 export type AttendanceStatus = "present" | "late" | "sick" | "personal_leave" | "absent";
 
@@ -63,6 +73,7 @@ export interface Database {
           province: string | null;
           phone: string | null;
           logo_url: string | null;
+          plan: "free" | "school_standard" | "school_pro" | "district_enterprise";
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -1255,6 +1266,139 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["audit_logs"]["Row"]>;
         Relationships: [];
       };
+      role_permissions: {
+        Row: {
+          id: string;
+          school_id: string | null;
+          role: Role;
+          permission_key: string;
+          allowed: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["role_permissions"]["Row"]> & {
+          role: Role;
+          permission_key: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["role_permissions"]["Row"]>;
+        Relationships: [];
+      };
+      system_settings: {
+        Row: {
+          id: string;
+          school_id: string;
+          category: string;
+          settings: Record<string, unknown>;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["system_settings"]["Row"]> & {
+          school_id: string;
+          category: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["system_settings"]["Row"]>;
+        Relationships: [];
+      };
+      login_logs: {
+        Row: {
+          id: string;
+          school_id: string | null;
+          user_id: string | null;
+          success: boolean;
+          ip_address: string | null;
+          user_agent: string | null;
+          failure_reason: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["login_logs"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["login_logs"]["Row"]>;
+        Relationships: [];
+      };
+      api_keys: {
+        Row: {
+          id: string;
+          school_id: string;
+          provider: string;
+          config: Record<string, unknown>;
+          secret_ciphertext: string | null;
+          is_active: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["api_keys"]["Row"]> & {
+          school_id: string;
+          provider: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["api_keys"]["Row"]>;
+        Relationships: [];
+      };
+      backup_jobs: {
+        Row: {
+          id: string;
+          school_id: string | null;
+          job_type: string;
+          direction: string;
+          target: string;
+          status: string;
+          file_path: string | null;
+          row_counts: Record<string, number> | null;
+          error_message: string | null;
+          created_by: string | null;
+          created_at: string;
+          completed_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["backup_jobs"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["backup_jobs"]["Row"]>;
+        Relationships: [];
+      };
+      theme_settings: {
+        Row: {
+          id: string;
+          school_id: string;
+          primary_color: string;
+          secondary_color: string;
+          logo_url: string | null;
+          favicon_url: string | null;
+          login_background_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["theme_settings"]["Row"]> & { school_id: string };
+        Update: Partial<Database["public"]["Tables"]["theme_settings"]["Row"]>;
+        Relationships: [];
+      };
+      api_usage_logs: {
+        Row: {
+          id: string;
+          school_id: string | null;
+          route: string;
+          kind: string;
+          input_tokens: number | null;
+          output_tokens: number | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["api_usage_logs"]["Row"]> & { route: string };
+        Update: Partial<Database["public"]["Tables"]["api_usage_logs"]["Row"]>;
+        Relationships: [];
+      };
+      school_quotas: {
+        Row: {
+          school_id: string;
+          max_students: number;
+          max_teachers: number;
+          max_storage_mb: number;
+          ai_credits_per_month: number;
+          ai_credits_used_this_month: number;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["school_quotas"]["Row"]> & { school_id: string };
+        Update: Partial<Database["public"]["Tables"]["school_quotas"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "school_quotas_school_id_fkey"; columns: ["school_id"]; isOneToOne: true; referencedRelation: "schools"; referencedColumns: ["id"] }
+        ];
+      };
       finance_audit_logs: {
         Row: {
           id: string;
@@ -2422,4 +2566,10 @@ export interface Database {
     Views: Record<string, never>;
     Functions: Record<string, never>;
   };
+}
+
+export interface AdminTableStat {
+  table_name: string;
+  row_estimate: number;
+  total_bytes: number;
 }
