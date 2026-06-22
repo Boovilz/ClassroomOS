@@ -5,6 +5,10 @@ import type { Database } from "@/lib/supabase/types";
 // Paths that do not require an authenticated session.
 const PUBLIC_PATHS = ["/login", "/register", "/auth/callback"];
 
+// Authenticated users with no school_id are sent here to create/join a
+// school before they can use any school-scoped feature.
+const ONBOARDING_PATH = "/onboarding";
+
 // Route prefixes that require authentication (the full dashboard app).
 const PROTECTED_PREFIXES = [
   "/dashboard",
@@ -78,6 +82,21 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/dashboard";
     url.search = "";
     return NextResponse.redirect(url);
+  }
+
+  if (user && isProtectedPath && pathname !== ONBOARDING_PATH) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("school_id, role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile && !profile.school_id && profile.role !== "super_admin") {
+      const url = request.nextUrl.clone();
+      url.pathname = ONBOARDING_PATH;
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;
