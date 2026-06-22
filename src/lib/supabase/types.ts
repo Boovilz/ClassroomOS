@@ -2245,6 +2245,115 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["communication_logs"]["Row"]>;
         Relationships: [];
       };
+      // ======================================================================
+      // Module 12 - AI Teacher Assistant (Claude-powered chat/insights/RAG)
+      // ======================================================================
+      ai_conversations: {
+        Row: {
+          id: string;
+          school_id: string;
+          user_id: string;
+          title: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ai_conversations"]["Row"]> & {
+          school_id: string;
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_conversations"]["Row"]>;
+        Relationships: [];
+      };
+      ai_messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          role: "user" | "assistant" | "system";
+          content: string;
+          input_tokens: number | null;
+          output_tokens: number | null;
+          model: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ai_messages"]["Row"]> & {
+          conversation_id: string;
+          role: "user" | "assistant" | "system";
+          content: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_messages"]["Row"]>;
+        Relationships: [];
+      };
+      ai_generated_content: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string | null;
+          content_type:
+            | "insight"
+            | "recommendation"
+            | "alert"
+            | "report"
+            | "document"
+            | "certificate_text"
+            | "message_draft"
+            | "lesson_plan"
+            | "workflow_run";
+          domain: string | null;
+          title: string;
+          content: string;
+          metadata: Record<string, unknown>;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ai_generated_content"]["Row"]> & {
+          school_id: string;
+          content_type: Database["public"]["Tables"]["ai_generated_content"]["Row"]["content_type"];
+          title: string;
+          content: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_generated_content"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "ai_generated_content_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
+        ];
+      };
+      ai_knowledge_base: {
+        Row: {
+          id: string;
+          school_id: string;
+          category: string;
+          title: string;
+          content: string;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ai_knowledge_base"]["Row"]> & {
+          school_id: string;
+          title: string;
+          content: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_knowledge_base"]["Row"]>;
+        Relationships: [];
+      };
+      ai_usage_logs: {
+        Row: {
+          id: string;
+          school_id: string | null;
+          user_id: string | null;
+          feature: string;
+          model: string | null;
+          input_tokens: number | null;
+          output_tokens: number | null;
+          succeeded: boolean;
+          error_message: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ai_usage_logs"]["Row"]> & {
+          feature: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_usage_logs"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
