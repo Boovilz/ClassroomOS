@@ -1564,6 +1564,8 @@ export interface Database {
           category: string | null;
           file_url: string | null;
           home_visit_id: string | null;
+          shared_with_parent_id: string | null;
+          acknowledged_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1583,6 +1585,11 @@ export interface Database {
           body: string;
           audience: "all" | "teachers" | "parents" | "students";
           published_at: string | null;
+          category: "general" | "school_activity" | "examination" | "meeting" | "homework" | "urgent";
+          scheduled_at: string | null;
+          attachment_urls: string[] | null;
+          target_classrooms: string[] | null;
+          target_parent_ids: string[] | null;
           created_at: string;
           updated_at: string;
         };
@@ -1605,6 +1612,7 @@ export interface Database {
           read_at: string | null;
           priority: "low" | "medium" | "high" | "critical";
           category: string | null;
+          channel: "in_app" | "simulated_line" | "email_stub" | "sms_stub";
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["notifications"]["Row"]> & {
@@ -1937,6 +1945,304 @@ export interface Database {
           risk_level: "normal" | "borderline" | "at_risk" | "high_risk" | "critical";
         };
         Update: Partial<Database["public"]["Tables"]["sdq_scores"]["Row"]>;
+        Relationships: [];
+      };
+      // ----------------------------------------------------------------------
+      // Module 11 - Parent Communication & LINE OA (simulated). See
+      // supabase/migrations/20250101000020_communication_line_oa.sql header
+      // for the full reuse-vs-new rationale.
+      // ----------------------------------------------------------------------
+      line_users: {
+        Row: {
+          id: string;
+          school_id: string;
+          parent_id: string;
+          line_user_id: string;
+          display_name: string | null;
+          linking_code: string;
+          verification_status: "pending" | "verified" | "revoked";
+          notifications_enabled: boolean;
+          linked_at: string | null;
+          consent_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["line_users"]["Row"]> & {
+          school_id: string;
+          parent_id: string;
+          line_user_id: string;
+          linking_code: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["line_users"]["Row"]>;
+        Relationships: [];
+      };
+      announcement_recipients: {
+        Row: {
+          id: string;
+          school_id: string;
+          announcement_id: string;
+          parent_id: string | null;
+          user_id: string | null;
+          delivery_status: "queued" | "simulated" | "delivered" | "failed";
+          read_at: string | null;
+          acknowledged_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["announcement_recipients"]["Row"]> & {
+          school_id: string;
+          announcement_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["announcement_recipients"]["Row"]>;
+        Relationships: [];
+      };
+      message_threads: {
+        Row: {
+          id: string;
+          school_id: string;
+          thread_type: "direct" | "class_group" | "broadcast";
+          title: string | null;
+          classroom: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["message_threads"]["Row"]> & {
+          school_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["message_threads"]["Row"]>;
+        Relationships: [];
+      };
+      message_thread_participants: {
+        Row: {
+          id: string;
+          thread_id: string;
+          user_id: string | null;
+          parent_id: string | null;
+          joined_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["message_thread_participants"]["Row"]> & {
+          thread_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["message_thread_participants"]["Row"]>;
+        Relationships: [];
+      };
+      messages: {
+        Row: {
+          id: string;
+          school_id: string;
+          thread_id: string;
+          sender_user_id: string | null;
+          sender_parent_id: string | null;
+          body: string;
+          is_quick_reply: boolean;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["messages"]["Row"]> & {
+          school_id: string;
+          thread_id: string;
+          body: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["messages"]["Row"]>;
+        Relationships: [];
+      };
+      message_attachments: {
+        Row: {
+          id: string;
+          message_id: string;
+          file_url: string;
+          file_type: "image" | "file";
+          file_name: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["message_attachments"]["Row"]> & {
+          message_id: string;
+          file_url: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["message_attachments"]["Row"]>;
+        Relationships: [];
+      };
+      message_read_receipts: {
+        Row: {
+          id: string;
+          message_id: string;
+          user_id: string | null;
+          parent_id: string | null;
+          read_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["message_read_receipts"]["Row"]> & {
+          message_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["message_read_receipts"]["Row"]>;
+        Relationships: [];
+      };
+      notification_templates: {
+        Row: {
+          id: string;
+          school_id: string | null;
+          template_type:
+            | "attendance_alert"
+            | "late_arrival"
+            | "homework_reminder"
+            | "exam_announcement"
+            | "behavior_update"
+            | "parent_meeting_invitation"
+            | "emergency_notice"
+            | "custom";
+          title: string;
+          body_template: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["notification_templates"]["Row"]> & {
+          template_type:
+            | "attendance_alert"
+            | "late_arrival"
+            | "homework_reminder"
+            | "exam_announcement"
+            | "behavior_update"
+            | "parent_meeting_invitation"
+            | "emergency_notice"
+            | "custom";
+          title: string;
+          body_template: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notification_templates"]["Row"]>;
+        Relationships: [];
+      };
+      events: {
+        Row: {
+          id: string;
+          school_id: string;
+          created_by: string | null;
+          title: string;
+          description: string | null;
+          event_category: "parent_meeting" | "school_activity" | "event" | "workshop";
+          classroom: string | null;
+          location: string | null;
+          starts_at: string;
+          ends_at: string | null;
+          reminder_sent_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["events"]["Row"]> & {
+          school_id: string;
+          title: string;
+          starts_at: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["events"]["Row"]>;
+        Relationships: [];
+      };
+      event_rsvps: {
+        Row: {
+          id: string;
+          school_id: string;
+          event_id: string;
+          parent_id: string | null;
+          user_id: string | null;
+          rsvp_status: "pending" | "attending" | "declined" | "maybe";
+          attended: boolean | null;
+          responded_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["event_rsvps"]["Row"]> & {
+          school_id: string;
+          event_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["event_rsvps"]["Row"]>;
+        Relationships: [];
+      };
+      parent_surveys: {
+        Row: {
+          id: string;
+          school_id: string;
+          created_by: string | null;
+          title: string;
+          description: string | null;
+          survey_type: "satisfaction" | "feedback" | "poll" | "vote";
+          is_anonymous: boolean;
+          status: "draft" | "open" | "closed";
+          opens_at: string | null;
+          closes_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["parent_surveys"]["Row"]> & {
+          school_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["parent_surveys"]["Row"]>;
+        Relationships: [];
+      };
+      survey_questions: {
+        Row: {
+          id: string;
+          survey_id: string;
+          question_text: string;
+          question_type: "rating" | "single_choice" | "multiple_choice" | "text";
+          options: unknown;
+          display_order: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["survey_questions"]["Row"]> & {
+          survey_id: string;
+          question_text: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["survey_questions"]["Row"]>;
+        Relationships: [];
+      };
+      survey_responses: {
+        Row: {
+          id: string;
+          school_id: string;
+          survey_id: string;
+          parent_id: string | null;
+          submitted_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["survey_responses"]["Row"]> & {
+          school_id: string;
+          survey_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["survey_responses"]["Row"]>;
+        Relationships: [];
+      };
+      survey_answers: {
+        Row: {
+          id: string;
+          response_id: string;
+          question_id: string;
+          answer_value: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["survey_answers"]["Row"]> & {
+          response_id: string;
+          question_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["survey_answers"]["Row"]>;
+        Relationships: [];
+      };
+      communication_logs: {
+        Row: {
+          id: string;
+          school_id: string;
+          actor_id: string | null;
+          channel: "in_app" | "simulated_line" | "email_stub" | "sms_stub";
+          message_type: "announcement" | "message" | "notification" | "event_reminder" | "survey_invite" | "document_share";
+          recipient_parent_id: string | null;
+          recipient_user_id: string | null;
+          reference_table: string | null;
+          reference_id: string | null;
+          status: "queued" | "simulated" | "delivered" | "failed";
+          detail: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["communication_logs"]["Row"]> & {
+          school_id: string;
+          channel: "in_app" | "simulated_line" | "email_stub" | "sms_stub";
+          message_type: "announcement" | "message" | "notification" | "event_reminder" | "survey_invite" | "document_share";
+        };
+        Update: Partial<Database["public"]["Tables"]["communication_logs"]["Row"]>;
         Relationships: [];
       };
     };

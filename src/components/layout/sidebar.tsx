@@ -19,6 +19,7 @@ import {
   Utensils,
   ClipboardList,
   BarChart3,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { href: "/sdq", label: "ประเมิน SDQ", icon: ClipboardList },
   { href: "/documents", label: "เอกสาร", icon: FileText },
   { href: "/communication", label: "สื่อสารผู้ปกครอง", icon: MessageCircle },
+  { href: "/parent-portal", label: "พอร์ทัลผู้ปกครอง", icon: Users },
   { href: "/reports", label: "รายงาน", icon: BarChart3 },
   { href: "/settings", label: "ตั้งค่า", icon: Settings },
 ];
