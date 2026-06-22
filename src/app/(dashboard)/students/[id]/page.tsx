@@ -14,6 +14,7 @@ import { getStudentCases, getStudentInterventionPlans, getParentCommunications }
 import { RiskAssessmentCard } from "@/components/home-visits/risk-assessment-card";
 import { CreateCaseDialog } from "@/components/home-visits/create-case-dialog";
 import { LogCommunicationDialog } from "@/components/home-visits/log-communication-dialog";
+import { getAiGeneratedContent } from "@/lib/queries/ai";
 
 const caseStatusLabel: Record<string, string> = {
   open: "เปิดเคส",
@@ -78,10 +79,13 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     { data: homeVisits },
     { data: sdqAssessments },
     { data: documents },
+    { data: mealRecords },
+    { data: mealEligibility },
     aiSummary,
     studentCases,
     interventionPlans,
     parentCommunications,
+    aiInsights,
   ] = await Promise.all([
     supabase.from("parents").select("*").eq("student_id", id),
     supabase.from("health_records").select("*").eq("student_id", id).order("recorded_at", { ascending: false }).limit(10),
@@ -127,10 +131,20 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     supabase.from("home_visits").select("*").eq("student_id", id).order("visit_date", { ascending: false }),
     supabase.from("sdq_assessments").select("*").eq("student_id", id).order("assessment_date", { ascending: false }),
     supabase.from("documents").select("*").eq("student_id", id).order("created_at", { ascending: false }),
+    supabase
+      .from("meal_records")
+      .select("date, meal_type, status, notes")
+      .eq("student_id", id)
+      .order("date", { ascending: false })
+      .limit(20),
+    supabase.from("meal_eligibility").select("*").eq("student_id", id).maybeSingle(),
     getStudentAiSummary(id),
     getStudentCases(id),
     getStudentInterventionPlans(id),
     getParentCommunications(id),
+    getAiGeneratedContent(student?.school_id ?? "", undefined, 5).then((rows) =>
+      rows.filter((r) => r.student_id === id)
+    ),
   ]);
 
   const learningOutcomes = await getLearningOutcomes(id);
@@ -243,9 +257,11 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           <TabsTrigger value="rewards">XP & รางวัล</TabsTrigger>
           <TabsTrigger value="finance">การเงิน</TabsTrigger>
           <TabsTrigger value="health">สุขภาพ</TabsTrigger>
+          <TabsTrigger value="nutrition">อาหารกลางวัน</TabsTrigger>
           <TabsTrigger value="home-visits">เยี่ยมบ้าน</TabsTrigger>
           <TabsTrigger value="sdq">SDQ</TabsTrigger>
           <TabsTrigger value="documents">เอกสาร</TabsTrigger>
+          <TabsTrigger value="ai-insights">AI Insights</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -512,6 +528,44 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           </Card>
         </TabsContent>
 
+        <TabsContent value="nutrition" className="space-y-4">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>สิทธิ์อาหารกลางวัน</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1 text-sm">
+              {mealEligibility ? (
+                <>
+                  <p>ประเภทโครงการ: {mealEligibility.program_type ?? "-"}</p>
+                  <p>สถานะ: {mealEligibility.status ?? "-"}</p>
+                  {mealEligibility.meal_restrictions && <p>ข้อจำกัดด้านอาหาร: {mealEligibility.meal_restrictions}</p>}
+                </>
+              ) : (
+                <p className="text-muted-foreground">ยังไม่มีข้อมูลสิทธิ์อาหารกลางวัน</p>
+              )}
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>ประวัติการรับอาหารล่าสุด</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {mealRecords && mealRecords.length > 0 ? (
+                mealRecords.map((m, i) => (
+                  <div key={i} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
+                    <span>
+                      {m.date} · {m.meal_type}
+                    </span>
+                    <Badge variant={m.status === "served" ? "success" : "outline"}>{m.status}</Badge>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">ยังไม่มีประวัติการรับอาหาร</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="home-visits" className="space-y-4">
           <Card className="glass-card">
             <CardHeader>
@@ -683,6 +737,29 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 ))
               ) : (
                 <p className="text-sm text-muted-foreground">ยังไม่มีเอกสาร</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ai-insights" className="space-y-4">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>ข้อมูลเชิงลึกจาก AI</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {aiInsights.length > 0 ? (
+                aiInsights.map((item) => (
+                  <div key={item.id} className="rounded-xl border border-border/60 p-3 text-sm">
+                    <p className="font-medium">{item.title}</p>
+                    <p className="text-muted-foreground">{item.content}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.content_type} · {new Date(item.created_at).toLocaleDateString("th-TH")}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">ยังไม่มีข้อมูลเชิงลึกจาก AI สำหรับนักเรียนคนนี้</p>
               )}
             </CardContent>
           </Card>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { logAudit } from "@/lib/audit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,11 +22,27 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
       setError(error.message);
       return;
+    }
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("school_id")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      if (profile?.school_id) {
+        void logAudit({
+          schoolId: profile.school_id,
+          actorId: data.user.id,
+          action: "login",
+          entityTable: "users",
+          entityId: data.user.id,
+        });
+      }
     }
     router.push("/dashboard");
   }

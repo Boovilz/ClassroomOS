@@ -4,8 +4,6 @@ import { StudentsTable } from "@/components/students/students-table";
 import { StudentFormDialog } from "@/components/students/student-form-dialog";
 import { StudentsFilterBar } from "@/components/students/students-filter-bar";
 
-// TODO: bulk import/export — needs xlsx/jsPDF deps, out of scope for this pass
-
 interface StudentsPageProps {
   searchParams: Promise<{
     grade?: string;
@@ -57,7 +55,7 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
 
       <StudentsFilterBar />
 
-      <StudentsTable data={students} />
+      <StudentsTable data={students} schoolId={appUser?.school_id ?? undefined} />
     </div>
   );
 }

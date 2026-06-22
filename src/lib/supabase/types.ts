@@ -65,6 +65,7 @@ export interface Database {
           logo_url: string | null;
           created_at: string;
           updated_at: string;
+          deleted_at: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["schools"]["Row"]> & { name: string };
         Update: Partial<Database["public"]["Tables"]["schools"]["Row"]>;
@@ -82,6 +83,7 @@ export interface Database {
           is_active: boolean;
           created_at: string;
           updated_at: string;
+          deleted_at: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["users"]["Row"]> & {
           id: string;
@@ -101,6 +103,7 @@ export interface Database {
           homeroom_classroom: string | null;
           created_at: string;
           updated_at: string;
+          deleted_at: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["teachers"]["Row"]> & {
           user_id: string;
@@ -165,6 +168,7 @@ export interface Database {
           welfare_status: "normal" | "monitoring" | "needs_support" | "critical" | null;
           created_at: string;
           updated_at: string;
+          deleted_at: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["students"]["Row"]> & {
           school_id: string;
@@ -192,6 +196,7 @@ export interface Database {
           education_level: string | null;
           created_at: string;
           updated_at: string;
+          deleted_at: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["parents"]["Row"]> & {
           school_id: string;
@@ -1232,6 +1237,23 @@ export interface Database {
         Relationships: [
           { foreignKeyName: "finance_goal_progress_goal_id_fkey"; columns: ["goal_id"]; isOneToOne: false; referencedRelation: "finance_goals"; referencedColumns: ["id"] }
         ];
+      };
+      audit_logs: {
+        Row: {
+          id: string;
+          school_id: string | null;
+          actor_id: string | null;
+          action: string;
+          entity_table: string | null;
+          entity_id: string | null;
+          metadata: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["audit_logs"]["Row"]> & {
+          action: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["audit_logs"]["Row"]>;
+        Relationships: [];
       };
       finance_audit_logs: {
         Row: {

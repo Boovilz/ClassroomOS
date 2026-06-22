@@ -12,6 +12,10 @@ export interface StudentsListFilters {
   riskLevel?: string;
   sort?: "name" | "student_code" | "gpa" | "attendance";
   direction?: "asc" | "desc";
+  /** Include soft-deleted (`deleted_at is not null`) rows. Used by a future
+   *  "trash" view; defaults to false so every existing call site keeps
+   *  filtering out soft-deleted students with no changes required. */
+  includeDeleted?: boolean;
 }
 
 export interface StudentListRow {
@@ -29,6 +33,7 @@ export interface StudentListRow {
   is_active: boolean;
   is_archived: boolean;
   risk_level: "low" | "medium" | "high" | null;
+  deleted_at: string | null;
   attendanceRate: number | null;
   gpa: number | null;
 }
@@ -45,9 +50,10 @@ export async function getStudentsList(filters: StudentsListFilters = {}): Promis
   let query = supabase
     .from("students")
     .select(
-      "id, school_id, student_code, citizen_id, full_name, nickname, gender, grade, classroom, avatar_url, profile_picture_url, is_active, is_archived, risk_level"
+      "id, school_id, student_code, citizen_id, full_name, nickname, gender, grade, classroom, avatar_url, profile_picture_url, is_active, is_archived, risk_level, deleted_at"
     );
 
+  if (!filters.includeDeleted) query = query.is("deleted_at", null);
   if (filters.grade) query = query.eq("grade", filters.grade);
   if (filters.classroom) query = query.eq("classroom", filters.classroom);
   if (filters.gender) query = query.eq("gender", filters.gender as "male" | "female" | "other");

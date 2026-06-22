@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
+import { logAudit } from "@/lib/audit";
 import { studentSchema, type StudentFormValues } from "@/lib/validations/student";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -168,6 +169,14 @@ export function StudentFormDialog({ schoolId, initialValues, trigger }: StudentF
       return;
     }
     studentId = savedStudent.id;
+
+    void logAudit({
+      schoolId,
+      action: isEditing ? "update" : "create",
+      entityTable: "students",
+      entityId: studentId,
+      metadata: { student_code: values.student_code, full_name: values.full_name },
+    });
 
     // Inline parent add (only if a name was provided)
     if (values.parent_full_name) {

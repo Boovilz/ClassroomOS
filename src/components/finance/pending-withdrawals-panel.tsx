@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { logAudit } from "@/lib/audit";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,15 @@ export function PendingWithdrawalsPanel({
       issued_by: approverId ?? null,
     });
 
+    void logAudit({
+      schoolId,
+      actorId: approverId,
+      action: "update",
+      entityTable: "finance_transactions",
+      entityId: row.id,
+      metadata: { event: "withdrawal_approved", amount: row.amount, account_id: row.account_id },
+    });
+
     toast.success("อนุมัติการถอนเงินแล้ว");
     setProcessingId(null);
     router.refresh();
@@ -77,6 +87,15 @@ export function PendingWithdrawalsPanel({
       .from("finance_transactions")
       .update({ status: "rejected", approved_by: approverId ?? null, approved_at: new Date().toISOString(), rejection_reason: reason })
       .eq("id", row.id);
+    void logAudit({
+      schoolId,
+      actorId: approverId,
+      action: "update",
+      entityTable: "finance_transactions",
+      entityId: row.id,
+      metadata: { event: "withdrawal_rejected", amount: row.amount, account_id: row.account_id, reason },
+    });
+
     toast.success("ปฏิเสธคำขอถอนเงินแล้ว");
     setProcessingId(null);
     router.refresh();
