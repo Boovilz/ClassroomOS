@@ -2376,6 +2376,48 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["ai_usage_logs"]["Row"]>;
         Relationships: [];
       };
+      import_jobs: {
+        Row: {
+          id: string;
+          school_id: string;
+          source: "excel" | "csv" | "google_sheets" | "dmc" | "api" | "qr";
+          file_name: string | null;
+          imported_by: string | null;
+          total_rows: number;
+          succeeded_count: number;
+          updated_count: number;
+          failed_count: number;
+          status: "pending" | "processing" | "completed" | "completed_with_errors" | "rolled_back";
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["import_jobs"]["Row"]> & {
+          school_id: string;
+          source: "excel" | "csv" | "google_sheets" | "dmc" | "api" | "qr";
+        };
+        Update: Partial<Database["public"]["Tables"]["import_jobs"]["Row"]>;
+        Relationships: [];
+      };
+      import_job_rows: {
+        Row: {
+          id: string;
+          import_job_id: string;
+          row_number: number;
+          student_id: string | null;
+          action: "created" | "updated" | "merged" | "skipped" | "failed";
+          previous_values: Record<string, unknown> | null;
+          error_message: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["import_job_rows"]["Row"]> & {
+          import_job_id: string;
+          row_number: number;
+          action: "created" | "updated" | "merged" | "skipped" | "failed";
+        };
+        Update: Partial<Database["public"]["Tables"]["import_job_rows"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "import_job_rows_import_job_id_fkey"; columns: ["import_job_id"]; isOneToOne: false; referencedRelation: "import_jobs"; referencedColumns: ["id"] }
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

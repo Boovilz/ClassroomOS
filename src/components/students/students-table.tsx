@@ -12,7 +12,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { MoreHorizontal, Eye, Pencil, Archive, ArchiveRestore, Trash2, Undo2 } from "lucide-react";
+import { MoreHorizontal, Eye, Pencil, Archive, ArchiveRestore, Trash2, Undo2, QrCode, ArrowUpCircle, FolderInput, Link2 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { logAudit } from "@/lib/audit";
@@ -27,10 +27,43 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StudentFormDialog } from "@/components/students/student-form-dialog";
 import { CsvExportButton } from "@/components/health/export-buttons";
 import { StudentsCsvImport } from "@/components/students/students-csv-import";
+import { QrCardsGrid } from "@/app/(dashboard)/attendance/qr/qr-cards-grid";
 import type { StudentListRow } from "@/lib/queries/students";
+
+// Thai grade-progression map, e.g. ป.1 -> ป.2 ... ป.6 -> ม.1, used by "Bulk
+// Promote Grade". Matches the free-text `grade` string format already used
+// across the codebase (see student-form-dialog.tsx placeholder "ป.4").
+const GRADE_PROGRESSION: Record<string, string> = {
+  "ป.1": "ป.2",
+  "ป.2": "ป.3",
+  "ป.3": "ป.4",
+  "ป.4": "ป.5",
+  "ป.5": "ป.6",
+  "ป.6": "ม.1",
+  "ม.1": "ม.2",
+  "ม.2": "ม.3",
+  "ม.3": "ม.4",
+  "ม.4": "ม.5",
+  "ม.5": "ม.6",
+};
 
 export type StudentRow = StudentListRow;
 
@@ -45,6 +78,13 @@ export function StudentsTable({ data, schoolId }: { data: StudentRow[]; schoolId
   const [filter, setFilter] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false);
+  const [bulkUpdateGrade, setBulkUpdateGrade] = useState("");
+  const [bulkUpdateClassroom, setBulkUpdateClassroom] = useState("");
+  const [bulkUpdateRisk, setBulkUpdateRisk] = useState<string>("");
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const [bulkMoveClassroom, setBulkMoveClassroom] = useState("");
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const router = useRouter();
 
   const handleArchiveToggle = useCallback(
@@ -161,6 +201,161 @@ export function StudentsTable({ data, schoolId }: { data: StudentRow[]; schoolId
       });
     }
     toast.success(`ลบนักเรียน ${selectedIds.length} คนแล้ว (ย้ายไปถังขยะ)`);
+    setRowSelection({});
+    router.refresh();
+  }, [selectedIds, selectedStudents, router]);
+
+  const handleBulkRestore = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    setBulkBusy(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("students").update({ deleted_at: null }).in("id", selectedIds);
+    setBulkBusy(false);
+    if (error) {
+      toast.error("กู้คืนไม่สำเร็จ", { description: error.message });
+      return;
+    }
+    for (const student of selectedStudents) {
+      void logAudit({
+        schoolId: student.school_id,
+        action: "restore",
+        entityTable: "students",
+        entityId: student.id,
+        metadata: { student_code: student.student_code, full_name: student.full_name, bulk: true },
+      });
+    }
+    toast.success(`กู้คืนนักเรียน ${selectedIds.length} คนแล้ว`);
+    setRowSelection({});
+    router.refresh();
+  }, [selectedIds, selectedStudents, router]);
+
+  const handleBulkUpdate = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    const fields: { grade?: string; classroom?: string; risk_level?: "low" | "medium" | "high" } = {};
+    if (bulkUpdateGrade.trim()) fields.grade = bulkUpdateGrade.trim();
+    if (bulkUpdateClassroom.trim()) fields.classroom = bulkUpdateClassroom.trim();
+    if (bulkUpdateRisk) fields.risk_level = bulkUpdateRisk as "low" | "medium" | "high";
+    if (Object.keys(fields).length === 0) {
+      toast.error("กรุณากรอกข้อมูลที่ต้องการอัปเดตอย่างน้อย 1 ฟิลด์");
+      return;
+    }
+    setBulkBusy(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("students").update(fields).in("id", selectedIds);
+    setBulkBusy(false);
+    if (error) {
+      toast.error("อัปเดตไม่สำเร็จ", { description: error.message });
+      return;
+    }
+    for (const student of selectedStudents) {
+      void logAudit({
+        schoolId: student.school_id,
+        action: "update",
+        entityTable: "students",
+        entityId: student.id,
+        metadata: { ...fields, bulk: true },
+      });
+    }
+    toast.success(`อัปเดต ${selectedIds.length} รายการแล้ว`);
+    setBulkUpdateOpen(false);
+    setBulkUpdateGrade("");
+    setBulkUpdateClassroom("");
+    setBulkUpdateRisk("");
+    setRowSelection({});
+    router.refresh();
+  }, [selectedIds, selectedStudents, bulkUpdateGrade, bulkUpdateClassroom, bulkUpdateRisk, router]);
+
+  const handleBulkMoveClassroom = useCallback(async () => {
+    if (selectedIds.length === 0 || !bulkMoveClassroom.trim()) return;
+    setBulkBusy(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("students").update({ classroom: bulkMoveClassroom.trim() }).in("id", selectedIds);
+    setBulkBusy(false);
+    if (error) {
+      toast.error("ย้ายห้องเรียนไม่สำเร็จ", { description: error.message });
+      return;
+    }
+    for (const student of selectedStudents) {
+      void logAudit({
+        schoolId: student.school_id,
+        action: "update",
+        entityTable: "students",
+        entityId: student.id,
+        metadata: { classroom: bulkMoveClassroom.trim(), bulk: true, move_classroom: true },
+      });
+    }
+    toast.success(`ย้ายห้องเรียน ${selectedIds.length} คนแล้ว`);
+    setBulkMoveOpen(false);
+    setBulkMoveClassroom("");
+    setRowSelection({});
+    router.refresh();
+  }, [selectedIds, selectedStudents, bulkMoveClassroom, router]);
+
+  const handleBulkPromoteGrade = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    const promotable = selectedStudents.filter((s) => s.grade && GRADE_PROGRESSION[s.grade]);
+    if (promotable.length === 0) {
+      toast.error("ไม่มีนักเรียนที่เลือกที่สามารถเลื่อนชั้นได้ (ไม่พบระดับชั้นที่ตรงกับตารางเลื่อนชั้น)");
+      return;
+    }
+    setBulkBusy(true);
+    const supabase = createClient();
+    for (const student of promotable) {
+      const nextGrade = GRADE_PROGRESSION[student.grade!];
+      const { error } = await supabase.from("students").update({ grade: nextGrade }).eq("id", student.id);
+      if (!error) {
+        void logAudit({
+          schoolId: student.school_id,
+          action: "update",
+          entityTable: "students",
+          entityId: student.id,
+          metadata: { grade_from: student.grade, grade_to: nextGrade, bulk: true, promote_grade: true },
+        });
+      }
+    }
+    setBulkBusy(false);
+    toast.success(`เลื่อนชั้น ${promotable.length} คนแล้ว`);
+    setRowSelection({});
+    router.refresh();
+  }, [selectedIds, selectedStudents, router]);
+
+  const handleBulkCreateParentLinks = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    setBulkBusy(true);
+    const supabase = createClient();
+    let createdCount = 0;
+    let skippedCount = 0;
+    for (const student of selectedStudents) {
+      const { data: parent } = await supabase
+        .from("parents")
+        .select("id, school_id")
+        .eq("student_id", student.id)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (!parent) {
+        skippedCount++;
+        continue;
+      }
+      // Reuse the same linking_code mechanism as Module 11's line_users
+      // (src/lib/queries/communication.ts createLineLinkingRequest) — there
+      // is no "parent account" concept anywhere else in the schema, so a
+      // one-time linking code is the real, buildable equivalent.
+      const linkingCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+      const { error } = await supabase.from("line_users").upsert(
+        {
+          school_id: parent.school_id,
+          parent_id: parent.id,
+          line_user_id: `pending-${parent.id}`,
+          linking_code: linkingCode,
+          verification_status: "pending",
+        },
+        { onConflict: "parent_id" }
+      );
+      if (!error) createdCount++;
+      else skippedCount++;
+    }
+    setBulkBusy(false);
+    toast.success(`สร้างโค้ดเชื่อมต่อผู้ปกครอง ${createdCount} รายการ${skippedCount > 0 ? ` (ข้าม ${skippedCount} รายการที่ไม่มีข้อมูลผู้ปกครอง)` : ""}`);
     setRowSelection({});
     router.refresh();
   }, [selectedIds, selectedStudents, router]);
@@ -357,8 +552,108 @@ export function StudentsTable({ data, schoolId }: { data: StudentRow[]; schoolId
             <Trash2 className="mr-2 h-4 w-4" />
             ลบที่เลือก
           </Button>
+          <Button size="sm" variant="outline" disabled={bulkBusy} onClick={handleBulkRestore}>
+            <Undo2 className="mr-2 h-4 w-4" />
+            กู้คืนที่เลือก
+          </Button>
+          <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => setBulkUpdateOpen(true)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            อัปเดตข้อมูล
+          </Button>
+          <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => setBulkMoveOpen(true)}>
+            <FolderInput className="mr-2 h-4 w-4" />
+            ย้ายห้องเรียน
+          </Button>
+          <Button size="sm" variant="outline" disabled={bulkBusy} onClick={handleBulkPromoteGrade}>
+            <ArrowUpCircle className="mr-2 h-4 w-4" />
+            เลื่อนชั้น
+          </Button>
+          <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => setQrDialogOpen(true)}>
+            <QrCode className="mr-2 h-4 w-4" />
+            สร้าง QR
+          </Button>
+          <Button size="sm" variant="outline" disabled={bulkBusy} onClick={handleBulkCreateParentLinks}>
+            <Link2 className="mr-2 h-4 w-4" />
+            สร้างโค้ดเชื่อมต่อผู้ปกครอง
+          </Button>
         </div>
       )}
+
+      <Dialog open={bulkUpdateOpen} onOpenChange={setBulkUpdateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>อัปเดตข้อมูลที่เลือก ({selectedIds.length} คน)</DialogTitle>
+            <DialogDescription>กรอกเฉพาะฟิลด์ที่ต้องการเปลี่ยน ฟิลด์ที่เว้นว่างจะไม่ถูกแก้ไข</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-muted-foreground">ระดับชั้น</label>
+              <Input placeholder="ป.4" value={bulkUpdateGrade} onChange={(e) => setBulkUpdateGrade(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">ห้องเรียน</label>
+              <Input placeholder="4/2" value={bulkUpdateClassroom} onChange={(e) => setBulkUpdateClassroom(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">ระดับความเสี่ยง</label>
+              <Select value={bulkUpdateRisk} onValueChange={setBulkUpdateRisk}>
+                <SelectTrigger>
+                  <SelectValue placeholder="ไม่เปลี่ยน" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">ต่ำ</SelectItem>
+                  <SelectItem value="medium">ปานกลาง</SelectItem>
+                  <SelectItem value="high">สูง</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkUpdateOpen(false)}>
+              ยกเลิก
+            </Button>
+            <Button disabled={bulkBusy} onClick={handleBulkUpdate}>
+              บันทึก
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkMoveOpen} onOpenChange={setBulkMoveOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ย้ายห้องเรียน ({selectedIds.length} คน)</DialogTitle>
+          </DialogHeader>
+          <Input placeholder="4/2" value={bulkMoveClassroom} onChange={(e) => setBulkMoveClassroom(e.target.value)} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkMoveOpen(false)}>
+              ยกเลิก
+            </Button>
+            <Button disabled={bulkBusy || !bulkMoveClassroom.trim()} onClick={handleBulkMoveClassroom}>
+              ย้าย
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>QR สำหรับนักเรียนที่เลือก ({selectedIds.length} คน)</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-y-auto">
+            <QrCardsGrid
+              students={selectedStudents.map((s) => ({
+                id: s.id,
+                full_name: s.full_name,
+                student_code: s.student_code,
+                classroom: s.classroom,
+                avatar_url: s.avatar_url,
+              }))}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="rounded-md border bg-card">
         <Table>

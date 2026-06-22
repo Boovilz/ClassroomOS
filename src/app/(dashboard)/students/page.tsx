@@ -1,8 +1,11 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getStudentsList } from "@/lib/queries/students";
 import { StudentsTable } from "@/components/students/students-table";
 import { StudentFormDialog } from "@/components/students/student-form-dialog";
 import { StudentsFilterBar } from "@/components/students/students-filter-bar";
+import { Button } from "@/components/ui/button";
+import { UploadCloud } from "lucide-react";
 
 interface StudentsPageProps {
   searchParams: Promise<{
@@ -13,6 +16,7 @@ interface StudentsPageProps {
     risk?: string;
     sort?: string;
     direction?: string;
+    includeDeleted?: string;
   }>;
 }
 
@@ -29,6 +33,7 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
       riskLevel: params.risk,
       sort: (params.sort as "name" | "student_code" | "gpa" | "attendance") ?? "student_code",
       direction: params.direction === "desc" ? "desc" : "asc",
+      includeDeleted: params.includeDeleted === "1",
     }),
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) return { data: null };
@@ -50,7 +55,15 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
             {highRiskCount > 0 ? ` · ความเสี่ยงสูง ${highRiskCount} คน` : ""}
           </p>
         </div>
-        {appUser?.school_id && <StudentFormDialog schoolId={appUser.school_id} />}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" asChild>
+            <Link href="/students/import">
+              <UploadCloud className="h-4 w-4" />
+              นำเข้านักเรียน
+            </Link>
+          </Button>
+          {appUser?.school_id && <StudentFormDialog schoolId={appUser.school_id} />}
+        </div>
       </div>
 
       <StudentsFilterBar />

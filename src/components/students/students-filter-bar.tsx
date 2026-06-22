@@ -95,6 +95,15 @@ export function StudentsFilterBar() {
       <FilterGroup label="เพศ" paramKey="gender" options={genderOptions} />
       <FilterGroup label="เรียงตาม" paramKey="sort" options={sortOptions} defaultValue="student_code" />
       <FilterGroup label="ลำดับ" paramKey="direction" options={directionOptions} defaultValue="asc" />
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-input"
+          checked={searchParams.get("includeDeleted") === "1"}
+          onChange={(e) => setParam("includeDeleted", e.target.checked ? "1" : ALL)}
+        />
+        แสดงรายการที่ถูกลบ
+      </label>
     </div>
   );
 }
