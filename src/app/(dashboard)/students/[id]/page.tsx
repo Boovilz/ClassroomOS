@@ -10,6 +10,29 @@ import { StudentFormDialog } from "@/components/students/student-form-dialog";
 import { Button } from "@/components/ui/button";
 import { LearningOutcomesTracker } from "@/components/academic/learning-outcomes-tracker";
 import { getLearningOutcomes } from "@/lib/queries/academic";
+import { getStudentCases, getStudentInterventionPlans, getParentCommunications } from "@/lib/queries/welfare";
+import { RiskAssessmentCard } from "@/components/home-visits/risk-assessment-card";
+import { CreateCaseDialog } from "@/components/home-visits/create-case-dialog";
+import { LogCommunicationDialog } from "@/components/home-visits/log-communication-dialog";
+
+const caseStatusLabel: Record<string, string> = {
+  open: "เปิดเคส",
+  monitoring: "ติดตาม",
+  resolved: "แก้ไขแล้ว",
+  closed: "ปิดเคส",
+};
+const caseStatusVariant: Record<string, "default" | "success" | "secondary" | "destructive" | "outline"> = {
+  open: "destructive",
+  monitoring: "secondary",
+  resolved: "success",
+  closed: "outline",
+};
+const interventionStatusLabel: Record<string, string> = {
+  open: "เปิด",
+  in_progress: "กำลังดำเนินการ",
+  completed: "เสร็จสิ้น",
+  cancelled: "ยกเลิก",
+};
 
 const genderLabel: Record<string, string> = { male: "ชาย", female: "หญิง", other: "อื่นๆ" };
 const riskLabel: Record<string, string> = { low: "ต่ำ", medium: "ปานกลาง", high: "สูง" };
@@ -56,6 +79,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     { data: sdqAssessments },
     { data: documents },
     aiSummary,
+    studentCases,
+    interventionPlans,
+    parentCommunications,
   ] = await Promise.all([
     supabase.from("parents").select("*").eq("student_id", id),
     supabase.from("health_records").select("*").eq("student_id", id).order("recorded_at", { ascending: false }).limit(10),
@@ -102,6 +128,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     supabase.from("sdq_assessments").select("*").eq("student_id", id).order("assessment_date", { ascending: false }),
     supabase.from("documents").select("*").eq("student_id", id).order("created_at", { ascending: false }),
     getStudentAiSummary(id),
+    getStudentCases(id),
+    getStudentInterventionPlans(id),
+    getParentCommunications(id),
   ]);
 
   const learningOutcomes = await getLearningOutcomes(id);
@@ -483,7 +512,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           </Card>
         </TabsContent>
 
-        <TabsContent value="home-visits">
+        <TabsContent value="home-visits" className="space-y-4">
           <Card className="glass-card">
             <CardHeader>
               <CardTitle>ประวัติการเยี่ยมบ้าน</CardTitle>
@@ -491,15 +520,90 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             <CardContent className="space-y-3">
               {homeVisits && homeVisits.length > 0 ? (
                 homeVisits.map((v) => (
-                  <div key={v.id} className="rounded-xl border border-border/60 p-3 text-sm">
-                    <p className="font-medium">{v.visit_date}</p>
-                    <p className="text-muted-foreground">{v.summary ?? "-"}</p>
-                    {v.family_situation && <p className="text-muted-foreground">สถานการณ์ครอบครัว: {v.family_situation}</p>}
-                    {v.follow_up_required && <Badge variant="secondary">ต้องติดตามต่อ</Badge>}
-                  </div>
+                  <Link key={v.id} href={`/home-visits/${v.id}`} className="block">
+                    <div className="rounded-xl border border-border/60 p-3 text-sm transition hover:bg-accent/40">
+                      <p className="font-medium">{v.visit_date}</p>
+                      <p className="text-muted-foreground">{v.summary ?? "-"}</p>
+                      {v.family_situation && <p className="text-muted-foreground">สถานการณ์ครอบครัว: {v.family_situation}</p>}
+                      {v.follow_up_required && <Badge variant="secondary">ต้องติดตามต่อ</Badge>}
+                    </div>
+                  </Link>
                 ))
               ) : (
                 <p className="text-sm text-muted-foreground">ยังไม่มีบันทึกการเยี่ยมบ้าน</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>ประเมินความเสี่ยงนักเรียน (AI)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RiskAssessmentCard studentId={id} />
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle>กรณีที่ติดตาม (Case Management)</CardTitle>
+              <CreateCaseDialog schoolId={student.school_id} studentId={id} />
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {studentCases.length > 0 ? (
+                studentCases.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between rounded-xl border border-border/60 p-3 text-sm">
+                    <div>
+                      <p className="font-medium">{c.title}</p>
+                      {c.description && <p className="text-muted-foreground">{c.description}</p>}
+                    </div>
+                    <Badge variant={caseStatusVariant[c.status] ?? "default"}>{caseStatusLabel[c.status] ?? c.status}</Badge>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">ไม่มีเคสที่ติดตาม</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>แผนช่วยเหลือ (Intervention Plans)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {interventionPlans.length > 0 ? (
+                interventionPlans.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between rounded-xl border border-border/60 p-3 text-sm">
+                    <div>
+                      <p className="font-medium">{p.title}</p>
+                      {p.description && <p className="text-muted-foreground">{p.description}</p>}
+                      {p.responsible_staff && <p className="text-xs text-muted-foreground">ผู้รับผิดชอบ: {p.responsible_staff}</p>}
+                    </div>
+                    <Badge variant="outline">{interventionStatusLabel[p.status] ?? p.status}</Badge>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">ยังไม่มีแผนช่วยเหลือ</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle>บันทึกการสื่อสารกับผู้ปกครอง</CardTitle>
+              <LogCommunicationDialog schoolId={student.school_id} studentId={id} />
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {parentCommunications.length > 0 ? (
+                parentCommunications.map((pc) => (
+                  <div key={pc.id} className="rounded-xl border border-border/60 p-3 text-sm">
+                    <p className="font-medium">{pc.summary}</p>
+                    {pc.agreements && <p className="text-muted-foreground">ข้อตกลง: {pc.agreements}</p>}
+                    {pc.follow_up_action && <p className="text-muted-foreground">การติดตามต่อ: {pc.follow_up_action}</p>}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">ยังไม่มีบันทึกการสื่อสาร</p>
               )}
             </CardContent>
           </Card>

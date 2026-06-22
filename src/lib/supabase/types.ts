@@ -160,6 +160,9 @@ export interface Database {
           emergency_contact_relationship: string | null;
           emergency_contact_phone: string | null;
           behavior_score: number;
+          poverty_risk_score: number | null;
+          last_home_visit_at: string | null;
+          welfare_status: "normal" | "monitoring" | "needs_support" | "critical" | null;
           created_at: string;
           updated_at: string;
         };
@@ -186,6 +189,7 @@ export interface Database {
           income: number | null;
           line_id: string | null;
           address: string | null;
+          education_level: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1490,6 +1494,23 @@ export interface Database {
           summary: string | null;
           family_situation: string | null;
           follow_up_required: boolean;
+          visit_time: string | null;
+          visit_type: "routine" | "follow_up" | "emergency" | "poverty_screening" | "welfare_check";
+          purpose: string | null;
+          outcome: string | null;
+          duration_minutes: number | null;
+          status: "scheduled" | "completed" | "cancelled" | "rescheduled";
+          latitude: number | null;
+          longitude: number | null;
+          maps_url: string | null;
+          economic_status: string | null;
+          educational_support: string | null;
+          family_support: string | null;
+          health_status_note: string | null;
+          behavior_concerns: string | null;
+          attendance_concerns: string | null;
+          academic_concerns: string | null;
+          created_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1535,6 +1556,7 @@ export interface Database {
           title: string;
           category: string | null;
           file_url: string | null;
+          home_visit_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1649,6 +1671,194 @@ export interface Database {
           recommendation: string;
         };
         Update: Partial<Database["public"]["Tables"]["dashboard_ai_insights"]["Row"]>;
+        Relationships: [];
+      };
+      home_visit_photos: {
+        Row: {
+          id: string;
+          school_id: string;
+          home_visit_id: string;
+          photo_url: string;
+          category: "house" | "study_area" | "family" | "other";
+          caption: string | null;
+          uploaded_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["home_visit_photos"]["Row"]> & {
+          school_id: string;
+          home_visit_id: string;
+          photo_url: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["home_visit_photos"]["Row"]>;
+        Relationships: [];
+      };
+      household_profiles: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          housing_ownership: "owned" | "rented" | "relative_owned" | "temporary" | "homeless" | null;
+          utilities_access: boolean | null;
+          housing_quality: "excellent" | "good" | "fair" | "needs_support" | null;
+          sleeping_arrangement: "excellent" | "good" | "fair" | "needs_support" | null;
+          study_environment: "excellent" | "good" | "fair" | "needs_support" | null;
+          electricity_water_access: "excellent" | "good" | "fair" | "needs_support" | null;
+          sanitation_condition: "excellent" | "good" | "fair" | "needs_support" | null;
+          safety_condition: "excellent" | "good" | "fair" | "needs_support" | null;
+          family_size: number | null;
+          household_assets: string | null;
+          government_assistance_received: string | null;
+          assessed_by: string | null;
+          assessed_at: string;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["household_profiles"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["household_profiles"]["Row"]>;
+        Relationships: [];
+      };
+      family_members: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          full_name: string;
+          relationship: string;
+          occupation: string | null;
+          monthly_income: number | null;
+          education_level: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["family_members"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          full_name: string;
+          relationship: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["family_members"]["Row"]>;
+        Relationships: [];
+      };
+      assistance_programs: {
+        Row: {
+          id: string;
+          school_id: string;
+          name: string;
+          program_type: "scholarship" | "educational_grant" | "emergency_assistance" | "uniform_support" | "learning_materials";
+          description: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["assistance_programs"]["Row"]> & {
+          school_id: string;
+          name: string;
+          program_type: "scholarship" | "educational_grant" | "emergency_assistance" | "uniform_support" | "learning_materials";
+        };
+        Update: Partial<Database["public"]["Tables"]["assistance_programs"]["Row"]>;
+        Relationships: [];
+      };
+      student_assistance: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          program_id: string;
+          status: "eligible" | "not_eligible" | "pending_review" | "enrolled";
+          amount: number | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["student_assistance"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          program_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["student_assistance"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "student_assistance_program_id_fkey"; columns: ["program_id"]; isOneToOne: false; referencedRelation: "assistance_programs"; referencedColumns: ["id"] }
+        ];
+      };
+      intervention_plans: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          case_id: string | null;
+          plan_type: "support_plan" | "improvement_plan" | "follow_up_action";
+          title: string;
+          description: string | null;
+          responsible_staff: string | null;
+          status: "open" | "in_progress" | "completed" | "cancelled";
+          start_date: string;
+          target_completion_date: string | null;
+          completed_at: string | null;
+          progress_notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["intervention_plans"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["intervention_plans"]["Row"]>;
+        Relationships: [];
+      };
+      student_cases: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          title: string;
+          concern_type: "welfare" | "academic" | "behavior" | "attendance" | "health" | "family";
+          description: string | null;
+          status: "open" | "monitoring" | "resolved" | "closed";
+          opened_by: string | null;
+          assigned_to: string | null;
+          resolved_at: string | null;
+          resolution_notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["student_cases"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["student_cases"]["Row"]>;
+        Relationships: [];
+      };
+      parent_communications: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          case_id: string | null;
+          home_visit_id: string | null;
+          communication_type: "meeting" | "phone_call" | "line_message" | "home_visit_discussion" | "agreement";
+          summary: string;
+          agreements: string | null;
+          follow_up_action: string | null;
+          follow_up_date: string | null;
+          communicated_by: string | null;
+          occurred_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["parent_communications"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          summary: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["parent_communications"]["Row"]>;
         Relationships: [];
       };
     };
