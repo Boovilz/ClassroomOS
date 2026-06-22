@@ -24,10 +24,12 @@ interface StudentOption {
   student_code: string;
 }
 
-function riskFromTotal(total: number): "normal" | "borderline" | "abnormal" {
+function riskFromTotal(total: number): "normal" | "borderline" | "at_risk" | "high_risk" | "critical" {
   if (total <= 13) return "normal";
   if (total <= 16) return "borderline";
-  return "abnormal";
+  if (total <= 19) return "at_risk";
+  if (total <= 24) return "high_risk";
+  return "critical";
 }
 
 export function SdqFormDialog({ schoolId, students }: { schoolId: string; students: StudentOption[] }) {

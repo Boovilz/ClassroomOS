@@ -1535,8 +1535,15 @@ export interface Database {
           peer_problems_score: number | null;
           prosocial_score: number | null;
           total_difficulties_score: number | null;
-          risk_level: "normal" | "borderline" | "abnormal" | null;
+          risk_level: "normal" | "borderline" | "at_risk" | "high_risk" | "critical" | null;
           raw_answers: Record<string, number> | null;
+          assessment_type: "teacher" | "parent" | "student";
+          assessment_period: "beginning_of_semester" | "mid_semester" | "end_of_semester" | "custom";
+          status: "pending" | "in_progress" | "completed" | "cancelled";
+          assigned_to_user_id: string | null;
+          assigned_to_parent_id: string | null;
+          submitted_at: string | null;
+          created_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1802,6 +1809,7 @@ export interface Database {
           completed_at: string | null;
           progress_notes: string | null;
           created_by: string | null;
+          sdq_assessment_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1821,11 +1829,12 @@ export interface Database {
           title: string;
           concern_type: "welfare" | "academic" | "behavior" | "attendance" | "health" | "family";
           description: string | null;
-          status: "open" | "monitoring" | "resolved" | "closed";
+          status: "open" | "monitoring" | "improving" | "resolved" | "closed";
           opened_by: string | null;
           assigned_to: string | null;
           resolved_at: string | null;
           resolution_notes: string | null;
+          sdq_assessment_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1859,6 +1868,75 @@ export interface Database {
           summary: string;
         };
         Update: Partial<Database["public"]["Tables"]["parent_communications"]["Row"]>;
+        Relationships: [];
+      };
+      sdq_questions: {
+        Row: {
+          id: string;
+          item_no: number;
+          subscale: "emotional" | "conduct" | "hyperactivity" | "peer_problems" | "prosocial";
+          question_text_th: string;
+          is_reverse_scored: boolean;
+          display_order: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["sdq_questions"]["Row"]> & {
+          item_no: number;
+          subscale: "emotional" | "conduct" | "hyperactivity" | "peer_problems" | "prosocial";
+          question_text_th: string;
+          display_order: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["sdq_questions"]["Row"]>;
+        Relationships: [];
+      };
+      sdq_responses: {
+        Row: {
+          id: string;
+          school_id: string;
+          assessment_id: string;
+          question_id: string;
+          answer_value: 0 | 1 | 2;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["sdq_responses"]["Row"]> & {
+          school_id: string;
+          assessment_id: string;
+          question_id: string;
+          answer_value: 0 | 1 | 2;
+        };
+        Update: Partial<Database["public"]["Tables"]["sdq_responses"]["Row"]>;
+        Relationships: [];
+      };
+      sdq_scores: {
+        Row: {
+          id: string;
+          school_id: string;
+          assessment_id: string;
+          student_id: string;
+          emotional_score: number;
+          conduct_score: number;
+          hyperactivity_score: number;
+          peer_problems_score: number;
+          prosocial_score: number;
+          total_difficulties_score: number;
+          risk_level: "normal" | "borderline" | "at_risk" | "high_risk" | "critical";
+          computed_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["sdq_scores"]["Row"]> & {
+          school_id: string;
+          assessment_id: string;
+          student_id: string;
+          emotional_score: number;
+          conduct_score: number;
+          hyperactivity_score: number;
+          peer_problems_score: number;
+          prosocial_score: number;
+          total_difficulties_score: number;
+          risk_level: "normal" | "borderline" | "at_risk" | "high_risk" | "critical";
+        };
+        Update: Partial<Database["public"]["Tables"]["sdq_scores"]["Row"]>;
         Relationships: [];
       };
     };

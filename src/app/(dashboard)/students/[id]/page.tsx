@@ -634,7 +634,15 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                     <div className="flex items-center justify-between">
                       <p className="font-medium">{s.assessment_date}</p>
                       {s.risk_level && (
-                        <Badge variant={s.risk_level === "abnormal" ? "destructive" : s.risk_level === "borderline" ? "secondary" : "success"}>
+                        <Badge
+                          variant={
+                            s.risk_level === "high_risk" || s.risk_level === "critical"
+                              ? "destructive"
+                              : s.risk_level === "borderline" || s.risk_level === "at_risk"
+                                ? "secondary"
+                                : "success"
+                          }
+                        >
                           {s.risk_level}
                         </Badge>
                       )}
