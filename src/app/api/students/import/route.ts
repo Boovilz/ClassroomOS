@@ -7,7 +7,7 @@ import type { DuplicateStrategy, ImportRow } from "@/lib/import/types";
  * Generic REST import endpoint: POST a JSON array of student rows (already
  * in the shared ImportRow shape, or close to it — missing fields are
  * treated as absent) and they run through the same validation/duplicate-
- * detection/creation pipeline as the Excel/CSV/Google Sheets importers.
+ * detection/creation pipeline as the Excel/CSV importers.
  * This is genuinely real (it's our own API), not a simulated connector.
  *
  * Body: { rows: Partial<ImportRow>[], strategy?: DuplicateStrategy, defaults?: { grade?: string; classroom?: string } }

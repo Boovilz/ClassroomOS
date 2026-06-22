@@ -12,8 +12,6 @@ import type { ImportJobRow } from "@/lib/queries/import-jobs";
 const sourceLabel: Record<string, string> = {
   excel: "Excel",
   csv: "CSV",
-  google_sheets: "Google Sheets",
-  dmc: "DMC (จำลอง)",
   api: "API",
   qr: "QR",
 };

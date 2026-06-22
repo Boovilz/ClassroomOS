@@ -2380,7 +2380,7 @@ export interface Database {
         Row: {
           id: string;
           school_id: string;
-          source: "excel" | "csv" | "google_sheets" | "dmc" | "api" | "qr";
+          source: "excel" | "csv" | "api" | "qr";
           file_name: string | null;
           imported_by: string | null;
           total_rows: number;
@@ -2392,7 +2392,7 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["import_jobs"]["Row"]> & {
           school_id: string;
-          source: "excel" | "csv" | "google_sheets" | "dmc" | "api" | "qr";
+          source: "excel" | "csv" | "api" | "qr";
         };
         Update: Partial<Database["public"]["Tables"]["import_jobs"]["Row"]>;
         Relationships: [];

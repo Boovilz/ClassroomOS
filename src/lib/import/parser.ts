@@ -2,12 +2,10 @@ import * as XLSX from "xlsx";
 import type { ImportRow } from "./types";
 
 /**
- * Column alias map: source-file header (English, Thai, or OBEC DMC export
- * column name) -> internal `ImportRow` field. SheetJS parses both .xlsx/.xls
- * and .csv through the same `read`/`utils.sheet_to_json` call so there is
- * only one parser code path (per the task spec) — DMC's real-world export
- * is itself just an Excel/CSV file, so its columns are simply additional
- * aliases here rather than a separate connector.
+ * Column alias map: source-file header (English or Thai) -> internal
+ * `ImportRow` field. SheetJS parses both .xlsx/.xls and .csv through the
+ * same `read`/`utils.sheet_to_json` call so there is only one parser code
+ * path (per the task spec).
  */
 export const COLUMN_ALIASES: Record<string, keyof ImportRow | "ignore"> = {
   // generic English
@@ -49,20 +47,6 @@ export const COLUMN_ALIASES: Record<string, keyof ImportRow | "ignore"> = {
   น้ำหนัก: "weight_kg",
   ประวัติแพ้: "allergies",
   โรคประจำตัว: "chronic_conditions",
-
-  // OBEC DMC export column names (Demo Mode preset — see dmc-preset.ts).
-  // DMC has no public live API; this maps a manually-exported DMC
-  // Excel/CSV file's known column headers onto the same internal fields.
-  เลขประจำตัว: "student_code",
-  "เลขประจำตัว นร.": "student_code",
-  ชื่อ: "full_name",
-  "ชื่อ-สกุล": "full_name",
-  "ชื่อจริง-นามสกุล": "full_name",
-  เพศ_dmc: "gender",
-  วดป_เกิด: "birth_date",
-  เลขบัตรประชาชน: "citizen_id",
-  ชั้น: "grade",
-  ห้อง: "classroom",
 };
 
 const GENDER_ALIASES: Record<string, "male" | "female" | "other"> = {
@@ -122,8 +106,8 @@ export function parseSpreadsheet(buffer: ArrayBuffer): { rawHeaders: string[]; r
 }
 
 /**
- * Maps raw header->value rows (from parseSpreadsheet, Google Sheets, or a
- * generic API payload that already used English keys) onto the shared
+ * Maps raw header->value rows (from parseSpreadsheet or a generic API
+ * payload that already used English keys) onto the shared
  * `ImportRow` shape used by validation/duplicate-detection/commit. Unknown
  * columns are kept in `raw` for display but otherwise ignored.
  *

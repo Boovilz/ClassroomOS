@@ -10,7 +10,7 @@
 create table if not exists import_jobs (
   id uuid primary key default gen_random_uuid(),
   school_id uuid not null references schools(id) on delete cascade,
-  source text not null check (source in ('excel', 'csv', 'google_sheets', 'dmc', 'api', 'qr')),
+  source text not null check (source in ('excel', 'csv', 'api', 'qr')),
   file_name text,
   imported_by uuid references users(id) on delete set null,
   total_rows integer not null default 0,

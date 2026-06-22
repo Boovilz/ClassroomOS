@@ -14,7 +14,7 @@ export default function ImportWizardPage() {
       </Button>
       <div>
         <h1 className="text-2xl font-bold">ตัวช่วยนำเข้านักเรียน</h1>
-        <p className="text-sm text-muted-foreground">นำเข้านักเรียนจาก Excel, CSV, Google Sheets, DMC (จำลอง) หรือ API</p>
+        <p className="text-sm text-muted-foreground">นำเข้านักเรียนจาก Excel, CSV, API หรือ QR</p>
       </div>
       <ImportWizard />
     </div>

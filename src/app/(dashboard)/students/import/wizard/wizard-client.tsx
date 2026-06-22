@@ -10,11 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, ArrowRight, CheckCircle2, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 
 import { parseSpreadsheet, mapRawRowsToImportRows } from "@/lib/import/parser";
 import { validateBatch } from "@/lib/import/validation";
-import { DMC_DISCLOSURE_TH, DMC_EXPECTED_COLUMNS } from "@/lib/import/dmc-preset";
 import type { DuplicateMatch, DuplicateStrategy, ImportRow, ImportSource, RowValidationResult } from "@/lib/import/types";
 import { commitImportBatch, findDuplicatesForReview, getKnownClassrooms } from "@/app/(dashboard)/students/import/wizard/actions";
 
@@ -22,8 +21,6 @@ type Scope = "single" | "classroom" | "grade" | "school";
 
 const SOURCE_OPTIONS: { value: ImportSource; label: string }[] = [
   { value: "excel", label: "Excel / CSV" },
-  { value: "dmc", label: "OBEC DMC (Demo Mode)" },
-  { value: "google_sheets", label: "Google Sheets" },
   { value: "api", label: "API (สำหรับนักพัฒนา)" },
   { value: "qr", label: "สแกน QR (1 คน)" },
 ];
@@ -44,9 +41,6 @@ export function ImportWizard() {
   const [scopeValue, setScopeValue] = useState("");
   const [source, setSource] = useState<ImportSource>("excel");
 
-  const [sheetUrl, setSheetUrl] = useState("");
-  const [sheetName, setSheetName] = useState("");
-  const [sheetsResult, setSheetsResult] = useState<{ ok: boolean; notConfigured?: boolean; message?: string } | null>(null);
   const [qrPayload, setQrPayload] = useState("");
 
   const [fileName, setFileName] = useState<string | null>(null);
@@ -133,31 +127,6 @@ export function ImportWizard() {
     };
     setFileName("QR scan");
     await runAnalysis([row]);
-  }
-
-  async function handleGoogleSheetsFetch() {
-    if (!sheetUrl.trim()) return;
-    setLoading(true);
-    setSheetsResult(null);
-    try {
-      const res = await fetch("/api/students/import/google-sheets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sheetUrl, sheetName, defaults }),
-      });
-      const data = await res.json();
-      if (!data.ok) {
-        setSheetsResult({ ok: false, notConfigured: data.notConfigured, message: data.message });
-        setLoading(false);
-        return;
-      }
-      setFileName(`Google Sheets: ${sheetUrl}`);
-      await runAnalysis(data.rows as ImportRow[]);
-    } catch (err) {
-      setSheetsResult({ ok: false, message: err instanceof Error ? err.message : "เกิดข้อผิดพลาด" });
-    } finally {
-      setLoading(false);
-    }
   }
 
   function rowStrategy(rowNumber: number): DuplicateStrategy {
@@ -264,17 +233,7 @@ export function ImportWizard() {
             <CardTitle>ขั้นตอนที่ 2: อัปโหลด / เชื่อมต่อ</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {source === "dmc" && (
-              <div className="glass-card rounded-2xl border border-amber-300/50 bg-amber-50/50 p-4 text-sm dark:bg-amber-950/20">
-                <p className="font-semibold text-amber-700 dark:text-amber-400">โหมดทดลอง / จำลองการทำงาน (Demo Mode)</p>
-                <p className="mt-1 text-muted-foreground">{DMC_DISCLOSURE_TH}</p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  คอลัมน์ที่รองรับจาก DMC: {DMC_EXPECTED_COLUMNS.join(", ")}
-                </p>
-              </div>
-            )}
-
-            {(source === "excel" || source === "dmc") && (
+            {source === "excel" && (
               <div className="space-y-2">
                 <input
                   ref={fileInputRef}
@@ -288,22 +247,6 @@ export function ImportWizard() {
                   disabled={loading}
                 />
                 <p className="text-xs text-muted-foreground">รองรับไฟล์ .xlsx, .xls, .csv</p>
-              </div>
-            )}
-
-            {source === "google_sheets" && (
-              <div className="space-y-2">
-                <Input placeholder="วาง URL ของ Google Sheet" value={sheetUrl} onChange={(e) => setSheetUrl(e.target.value)} />
-                <Input placeholder="ชื่อชีต/แท็บ (เว้นว่างได้)" value={sheetName} onChange={(e) => setSheetName(e.target.value)} />
-                <Button onClick={handleGoogleSheetsFetch} disabled={loading || !sheetUrl.trim()}>
-                  <FileSpreadsheet className="mr-2 h-4 w-4" /> เชื่อมต่อและดึงข้อมูล
-                </Button>
-                {sheetsResult && !sheetsResult.ok && (
-                  <p className="text-sm text-destructive">{sheetsResult.message}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  ก่อนใช้งาน ต้องแชร์ Google Sheet ของคุณให้กับอีเมลของ Service Account (ดูที่ .env.example)
-                </p>
               </div>
             )}
 

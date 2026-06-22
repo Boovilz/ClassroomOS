@@ -1,6 +1,6 @@
 /**
- * Shared row shape that every import source (Excel/CSV, Google Sheets, DMC
- * preset, generic API, QR) normalizes to before it hits the shared
+ * Shared row shape that every import source (Excel/CSV, generic API, QR)
+ * normalizes to before it hits the shared
  * validation -> duplicate-detection -> commit pipeline. Field names mirror
  * `studentSchema` (src/lib/validations/student.ts) plus a few plain string
  * columns the importer additionally understands (parent_*, health_*).
@@ -35,7 +35,7 @@ export interface ImportRow {
   raw: Record<string, string>;
 }
 
-export type ImportSource = "excel" | "csv" | "google_sheets" | "dmc" | "api" | "qr";
+export type ImportSource = "excel" | "csv" | "api" | "qr";
 
 export type DuplicateStrategy = "skip" | "update" | "merge" | "create_new";
 
