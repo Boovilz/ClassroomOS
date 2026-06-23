@@ -62,8 +62,12 @@ const DMC_STUDENT_NAME_COLUMNS = ["คำนำหน้าชื่อ", "ช�
 const DMC_PARENT_NAME_COLUMNS = ["คำนำหน้าชื่อผู้ปกครอง", "ชื่อผู้ปกครอง", "นามสกุลผู้ปกครอง"];
 
 function joinNameParts(raw: Record<string, string>, columns: string[]): string {
+  const byBaseName = new Map<string, string>();
+  for (const [header, value] of Object.entries(raw)) {
+    byBaseName.set(baseHeaderName(header), value);
+  }
   return columns
-    .map((col) => raw[col]?.trim())
+    .map((col) => byBaseName.get(col)?.trim())
     .filter(Boolean)
     .join(" ");
 }
@@ -75,6 +79,7 @@ const GENDER_ALIASES: Record<string, "male" | "female" | "other"> = {
   ชาย: "male",
   หญิง: "female",
   ม: "male",
+  ช: "male",
   ญ: "female",
   "1": "male",
   "2": "female",
@@ -91,6 +96,14 @@ const RELATIONSHIP_ALIASES: Record<string, "father" | "mother" | "guardian" | "o
   แม่: "mother",
   ผู้ปกครอง: "guardian",
   อื่นๆ: "other",
+  ปู่: "other",
+  ย่า: "other",
+  ตา: "other",
+  ยาย: "other",
+  ลุง: "other",
+  ป้า: "other",
+  อา: "other",
+  น้า: "other",
 };
 
 function normalizeCell(value: unknown): string {
@@ -100,28 +113,75 @@ function normalizeCell(value: unknown): string {
 }
 
 /**
+ * Some export tools (e.g. DMC school reports) prepend a "report generated
+ * at ..." line above the real header row. Pick the row, among the first
+ * few, with the most cells matching a known column alias - the actual
+ * header row scores far higher than a one-off metadata line.
+ */
+function findHeaderRowIndex(rows: unknown[][]): number {
+  let bestIndex = 0;
+  let bestScore = -1;
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const row = rows[i] ?? [];
+    const score = row.filter((cell) => COLUMN_ALIASES[String(cell ?? "").trim()] !== undefined).length;
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = i;
+    }
+  }
+  return bestIndex;
+}
+
+/**
  * Parses an Excel (.xlsx/.xls) or CSV file (as an ArrayBuffer) into rows of
  * raw string cells, using the first sheet. SheetJS's `read()` auto-detects
  * CSV vs binary workbook formats, so one code path handles both.
+ *
+ * Reads in array-of-arrays mode (rather than letting SheetJS build header
+ * keyed objects directly) for two reasons: some exports have a metadata row
+ * above the real header, and some exports reuse the same header text for
+ * two different columns (e.g. citizen ID mislabeled with the student-code
+ * header) - building objects by header name alone would silently drop one
+ * of the two columns since the later one overwrites the key.
  */
 export function parseSpreadsheet(buffer: ArrayBuffer): { rawHeaders: string[]; rawRows: Record<string, string>[] } {
   const workbook = XLSX.read(buffer, { type: "array" });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
-  const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: false });
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", raw: false });
 
-  if (json.length === 0) return { rawHeaders: [], rawRows: [] };
+  if (rows.length === 0) return { rawHeaders: [], rawRows: [] };
 
-  const rawHeaders = Object.keys(json[0]);
-  const rawRows = json.map((record) => {
+  const headerRowIndex = findHeaderRowIndex(rows);
+  const headerRow = rows[headerRowIndex] ?? [];
+
+  // Disambiguate duplicate header text by column position: each occurrence
+  // beyond the first gets a `__2`, `__3`, ... suffix stripped again at
+  // alias-lookup time, so downstream mapping can inspect both columns'
+  // values instead of one silently clobbering the other.
+  const seenHeaderCounts = new Map<string, number>();
+  const rawHeaders = headerRow.map((cell) => {
+    const name = String(cell ?? "").trim();
+    const count = (seenHeaderCounts.get(name) ?? 0) + 1;
+    seenHeaderCounts.set(name, count);
+    return count > 1 ? `${name}__${count}` : name;
+  });
+
+  const rawRows = rows.slice(headerRowIndex + 1).map((row) => {
     const out: Record<string, string> = {};
-    for (const [key, value] of Object.entries(record)) {
-      out[key] = normalizeCell(value);
-    }
+    rawHeaders.forEach((header, i) => {
+      if (!header) return;
+      out[header] = normalizeCell(row[i]);
+    });
     return out;
   });
 
   return { rawHeaders, rawRows };
+}
+
+/** Strips the `__2`, `__3`, ... disambiguation suffix added for duplicate headers. */
+function baseHeaderName(header: string): string {
+  return header.replace(/__\d+$/, "");
 }
 
 /**
@@ -141,8 +201,17 @@ export function mapRawRowsToImportRows(
   return rawRows.map((raw, idx) => {
     const mapped: Partial<ImportRow> = {};
     for (const [header, value] of Object.entries(raw)) {
-      const field = COLUMN_ALIASES[header.trim()];
+      const field = COLUMN_ALIASES[baseHeaderName(header).trim()];
       if (!field || field === "ignore" || !value) continue;
+
+      // A 13-digit value under a "student_code" header is actually a Thai
+      // citizen ID mislabeled by the export tool (seen in some DMC-derived
+      // reports that reuse the same header text for both columns).
+      if (field === "student_code" && /^\d{13}$/.test(value)) {
+        if (!mapped.citizen_id) mapped.citizen_id = value;
+        continue;
+      }
+
       (mapped as Record<string, string>)[field] = value;
     }
 
