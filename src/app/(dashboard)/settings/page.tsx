@@ -10,6 +10,7 @@ import { BackupTab } from "./backup-tab";
 import { ThemeTab } from "./theme-tab";
 import { SecurityTab } from "./security-tab";
 import { SubscriptionTab } from "./subscription-tab";
+import { BootstrapSuperAdminBanner } from "./bootstrap-super-admin-banner";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -41,6 +42,7 @@ export default async function SettingsPage() {
           <h1 className="text-2xl font-bold">ตั้งค่า</h1>
           <p className="text-sm text-muted-foreground">เฉพาะผู้ดูแลโรงเรียนเท่านั้นที่จัดการการตั้งค่าได้</p>
         </div>
+        <BootstrapSuperAdminBanner />
       </div>
     );
   }
@@ -51,6 +53,7 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-bold">ตั้งค่า</h1>
         <p className="text-sm text-muted-foreground">จัดการข้อมูลโรงเรียน ผู้ใช้งาน บทบาท และการตั้งค่าระบบทั้งหมด</p>
       </div>
+      <BootstrapSuperAdminBanner />
 
       <Tabs defaultValue="school" className="space-y-4">
         <TabsList className="flex-wrap h-auto">
