@@ -107,6 +107,27 @@ const RELATIONSHIP_ALIASES: Record<string, "father" | "mother" | "guardian" | "o
   น้า: "other",
 };
 
+/**
+ * Thai exports write birth dates as DD/MM/BBBB (Buddhist Era, e.g.
+ * 26/09/2564) which Postgres date columns reject outright - "26" isn't a
+ * valid month, and even when the day/month order happens to parse the year
+ * is 543 too high. Convert to ISO yyyy-mm-dd in the Gregorian calendar so
+ * the value is a normal date by the time it reaches the DB.
+ */
+function normalizeBirthDate(value: string): string {
+  const match = value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{3,4})$/);
+  if (!match) return value;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  let year = Number(match[3]);
+  if (year > 2400) year -= 543; // Buddhist Era -> Gregorian
+
+  if (month < 1 || month > 12 || day < 1 || day > 31) return value;
+
+  return `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+}
+
 function normalizeCell(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (value instanceof Date) return value.toISOString().slice(0, 10);
@@ -225,6 +246,9 @@ export function mapRawRowsToImportRows(
       if (dmcParentName) mapped.parent_full_name = dmcParentName;
     }
 
+    if (mapped.birth_date) {
+      mapped.birth_date = normalizeBirthDate(mapped.birth_date);
+    }
     if (mapped.gender) {
       mapped.gender = GENDER_ALIASES[mapped.gender.toLowerCase().trim()] ?? undefined;
     }
