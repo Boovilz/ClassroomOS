@@ -160,6 +160,23 @@ export async function commitRow(
       .single();
 
     if (error || !created) {
+      // The duplicate-detection pass (run once, up front, during review) can
+      // miss a row that already exists by the time commit actually runs -
+      // e.g. a previous partial import run already created it, or another
+      // row earlier in this same batch did. Recover by treating it as the
+      // duplicate it evidently is instead of failing the whole row.
+      if (error?.code === "23505" && error.message.includes("student_code")) {
+        const { data: existing } = await supabase
+          .from("students")
+          .select("*")
+          .eq("school_id", schoolId)
+          .eq("student_code", row.student_code)
+          .maybeSingle();
+        if (existing) {
+          const recoveredStrategy = strategy === "create_new" ? "skip" : strategy;
+          return commitRow(ctx, row, { studentId: existing.id, matchedOn: "student_code", existing }, recoveredStrategy);
+        }
+      }
       return { rowNumber: row.rowNumber, studentId: null, action: "failed", previousValues: null, errorMessage: error?.message ?? "insert failed" };
     }
 
