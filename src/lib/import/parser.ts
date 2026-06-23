@@ -54,6 +54,7 @@ export const COLUMN_ALIASES: Record<string, keyof ImportRow | "ignore"> = {
   ห้อง: "classroom",
   "หมายเลขโทรศัพท์ของผู้ปกครอง": "parent_phone",
   "ความเกี่ยวข้องของผู้ปกครองกับนักเรียน": "parent_relationship",
+  เลขประจำตัวนักเรียน: "student_code",
 };
 
 /** DMC splits a student's name across these columns; combined into full_name. */
