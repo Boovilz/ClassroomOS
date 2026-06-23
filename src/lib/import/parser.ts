@@ -47,7 +47,26 @@ export const COLUMN_ALIASES: Record<string, keyof ImportRow | "ignore"> = {
   น้ำหนัก: "weight_kg",
   ประวัติแพ้: "allergies",
   โรคประจำตัว: "chronic_conditions",
+
+  // DMC (ฐานข้อมูลกลาง สพฐ.) export columns - name parts are combined into
+  // full_name separately below since DMC splits them into their own columns.
+  ชั้น: "grade",
+  ห้อง: "classroom",
+  "หมายเลขโทรศัพท์ของผู้ปกครอง": "parent_phone",
+  "ความเกี่ยวข้องของผู้ปกครองกับนักเรียน": "parent_relationship",
 };
+
+/** DMC splits a student's name across these columns; combined into full_name. */
+const DMC_STUDENT_NAME_COLUMNS = ["คำนำหน้าชื่อ", "ชื่อ", "นามสกุล"];
+/** DMC splits the guardian's name the same way; combined into parent_full_name. */
+const DMC_PARENT_NAME_COLUMNS = ["คำนำหน้าชื่อผู้ปกครอง", "ชื่อผู้ปกครอง", "นามสกุลผู้ปกครอง"];
+
+function joinNameParts(raw: Record<string, string>, columns: string[]): string {
+  return columns
+    .map((col) => raw[col]?.trim())
+    .filter(Boolean)
+    .join(" ");
+}
 
 const GENDER_ALIASES: Record<string, "male" | "female" | "other"> = {
   male: "male",
@@ -125,6 +144,15 @@ export function mapRawRowsToImportRows(
       const field = COLUMN_ALIASES[header.trim()];
       if (!field || field === "ignore" || !value) continue;
       (mapped as Record<string, string>)[field] = value;
+    }
+
+    if (!mapped.full_name) {
+      const dmcName = joinNameParts(raw, DMC_STUDENT_NAME_COLUMNS);
+      if (dmcName) mapped.full_name = dmcName;
+    }
+    if (!mapped.parent_full_name) {
+      const dmcParentName = joinNameParts(raw, DMC_PARENT_NAME_COLUMNS);
+      if (dmcParentName) mapped.parent_full_name = dmcParentName;
     }
 
     if (mapped.gender) {
