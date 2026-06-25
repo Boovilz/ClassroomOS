@@ -283,6 +283,32 @@ export async function getLeaderboard(category: LeaderboardCategory, limit = 10) 
 }
 
 // ============================================================================
+// XP / Coin ledgers
+// ============================================================================
+
+export async function getStudentXpTransactions(studentId: string, limit = 30) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("xp_transactions")
+    .select("id, amount, reason, created_at")
+    .eq("student_id", studentId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return data ?? [];
+}
+
+export async function getStudentCoinTransactions(studentId: string, limit = 30) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("coin_transactions")
+    .select("id, amount, reason, created_at")
+    .eq("student_id", studentId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return data ?? [];
+}
+
+// ============================================================================
 // Badges
 // ============================================================================
 

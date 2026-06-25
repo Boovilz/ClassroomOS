@@ -15,6 +15,10 @@ import { RiskAssessmentCard } from "@/components/home-visits/risk-assessment-car
 import { CreateCaseDialog } from "@/components/home-visits/create-case-dialog";
 import { LogCommunicationDialog } from "@/components/home-visits/log-communication-dialog";
 import { getAiGeneratedContent } from "@/lib/queries/ai";
+import { getStudentRiskScore } from "@/lib/queries/risk-score";
+import { getStudentAttendanceAnalytics } from "@/lib/queries/attendance";
+import { getStudentXpTransactions, getStudentCoinTransactions } from "@/lib/queries/behavior";
+import { RiskScoreCard } from "@/components/students/risk-score-card";
 
 const caseStatusLabel: Record<string, string> = {
   open: "เปิดเคส",
@@ -86,6 +90,10 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     interventionPlans,
     parentCommunications,
     aiInsights,
+    riskScore,
+    attendanceAnalytics,
+    xpTransactions,
+    coinTransactions,
   ] = await Promise.all([
     supabase.from("parents").select("*").eq("student_id", id),
     supabase.from("health_records").select("*").eq("student_id", id).order("recorded_at", { ascending: false }).limit(10),
@@ -145,6 +153,10 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     getAiGeneratedContent(student?.school_id ?? "", undefined, 5).then((rows) =>
       rows.filter((r) => r.student_id === id)
     ),
+    getStudentRiskScore(id),
+    getStudentAttendanceAnalytics(id),
+    getStudentXpTransactions(id),
+    getStudentCoinTransactions(id),
   ]);
 
   const learningOutcomes = await getLearningOutcomes(id);
@@ -267,6 +279,14 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         <TabsContent value="overview" className="space-y-4">
           <Card className="glass-card">
             <CardHeader>
+              <CardTitle>คะแนนความเสี่ยงโดยรวม</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RiskScoreCard riskScore={riskScore} />
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardHeader>
               <CardTitle>ที่อยู่และข้อมูลทั่วไป</CardTitle>
             </CardHeader>
             <CardContent className="space-y-1 text-sm">
@@ -370,6 +390,42 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         </TabsContent>
 
         <TabsContent value="attendance" className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-base">อัตราการมาเรียน (60 วัน)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{attendanceAnalytics.attendanceRate}%</p>
+                {attendanceAnalytics.trendDelta !== null && (
+                  <p className={`text-sm ${attendanceAnalytics.trendDelta >= 0 ? "text-success" : "text-destructive"}`}>
+                    {attendanceAnalytics.trendDelta >= 0 ? "+" : ""}
+                    {attendanceAnalytics.trendDelta}% เทียบกับ 60 วันก่อนหน้า
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-base">ขาดเรียนต่อเนื่อง</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{attendanceAnalytics.currentAbsentStreak} วัน</p>
+              </CardContent>
+            </Card>
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-base">สรุปสถานะ (60 วัน)</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-0.5 text-sm">
+                <p>มา {attendanceAnalytics.statusCounts.present} · มาสาย {attendanceAnalytics.statusCounts.late}</p>
+                <p>
+                  ลาป่วย {attendanceAnalytics.statusCounts.sick} · ลากิจ {attendanceAnalytics.statusCounts.personal_leave} · ขาด{" "}
+                  {attendanceAnalytics.statusCounts.absent}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
           <Card className="glass-card">
             <CardHeader>
               <CardTitle>แผนภูมิการเข้าเรียน (60 วันล่าสุด)</CardTitle>
@@ -458,6 +514,54 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
               {/* TODO: full avatar shop / equip UI — out of scope for this pass */}
             </CardContent>
           </Card>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle>ประวัติ XP</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {xpTransactions.length > 0 ? (
+                  xpTransactions.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
+                      <div>
+                        <p>{t.reason}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(t.created_at).toLocaleDateString("th-TH")}</p>
+                      </div>
+                      <span className={t.amount >= 0 ? "font-medium text-success" : "font-medium text-destructive"}>
+                        {t.amount >= 0 ? "+" : ""}
+                        {t.amount} XP
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">ยังไม่มีประวัติ XP</p>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle>ประวัติเหรียญ</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {coinTransactions.length > 0 ? (
+                  coinTransactions.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
+                      <div>
+                        <p>{t.reason}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(t.created_at).toLocaleDateString("th-TH")}</p>
+                      </div>
+                      <span className={t.amount >= 0 ? "font-medium text-success" : "font-medium text-destructive"}>
+                        {t.amount >= 0 ? "+" : ""}
+                        {t.amount} เหรียญ
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">ยังไม่มีประวัติเหรียญ</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
           <Card className="glass-card">
             <CardHeader>
               <CardTitle>เหรียญรางวัล/ความสำเร็จ</CardTitle>

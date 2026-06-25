@@ -719,3 +719,54 @@ export async function getAttendanceModeAnalytics(): Promise<AttendanceModeBreakd
   }
   return Array.from(counts.entries()).map(([mode, count]) => ({ mode, count }));
 }
+
+// ============================================================================
+// Per-student analytics
+// ============================================================================
+
+export interface StudentAttendanceAnalytics {
+  /** Percentage of recorded days marked present or late, over the queried window. */
+  attendanceRate: number;
+  totalDays: number;
+  statusCounts: Record<AttendanceStatus, number>;
+  /** Consecutive most-recent days marked absent, 0 if the latest record isn't an absence. */
+  currentAbsentStreak: number;
+  /** +/- vs. the previous-period attendance rate, null if there isn't a prior period to compare. */
+  trendDelta: number | null;
+}
+
+export async function getStudentAttendanceAnalytics(studentId: string, windowDays = 60): Promise<StudentAttendanceAnalytics> {
+  const supabase = await createClient();
+  const since = new Date(Date.now() - windowDays * 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const { data } = await supabase
+    .from("attendance")
+    .select("status, date")
+    .eq("student_id", studentId)
+    .gte("date", since)
+    .order("date", { ascending: false });
+
+  const rows = data ?? [];
+  const recent = rows.filter((r) => r.date >= new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
+  const previous = rows.filter((r) => !recent.includes(r));
+
+  const statusCounts: Record<AttendanceStatus, number> = { present: 0, late: 0, sick: 0, personal_leave: 0, absent: 0 };
+  for (const r of recent) statusCounts[r.status]++;
+
+  const totalDays = recent.length;
+  const presentLike = statusCounts.present + statusCounts.late;
+  const attendanceRate = totalDays > 0 ? Math.round((presentLike / totalDays) * 1000) / 10 : 0;
+
+  const previousTotal = previous.length;
+  const previousPresentLike = previous.filter((r) => r.status === "present" || r.status === "late").length;
+  const previousRate = previousTotal > 0 ? (previousPresentLike / previousTotal) * 100 : null;
+  const trendDelta = previousRate !== null ? Math.round((attendanceRate - previousRate) * 10) / 10 : null;
+
+  let currentAbsentStreak = 0;
+  for (const r of recent) {
+    if (r.status === "absent") currentAbsentStreak++;
+    else break;
+  }
+
+  return { attendanceRate, totalDays, statusCounts, currentAbsentStreak, trendDelta };
+}
