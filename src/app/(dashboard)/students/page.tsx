@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getStudentsList } from "@/lib/queries/students";
+import { getStudentsList, getDistinctGradesAndClassrooms } from "@/lib/queries/students";
 import { StudentsTable } from "@/components/students/students-table";
 import { StudentFormDialog } from "@/components/students/student-form-dialog";
 import { StudentsFilterBar } from "@/components/students/students-filter-bar";
@@ -24,7 +24,7 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
   const params = await searchParams;
   const supabase = await createClient();
 
-  const [students, { data: appUser }] = await Promise.all([
+  const [students, { data: appUser }, { grades, classrooms }] = await Promise.all([
     getStudentsList({
       grade: params.grade,
       classroom: params.classroom,
@@ -39,6 +39,7 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
       if (!data.user) return { data: null };
       return supabase.from("users").select("school_id").eq("id", data.user.id).maybeSingle();
     }),
+    getDistinctGradesAndClassrooms(),
   ]);
 
   const total = students.length;
@@ -66,7 +67,7 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
         </div>
       </div>
 
-      <StudentsFilterBar />
+      <StudentsFilterBar grades={grades} classrooms={classrooms} />
 
       <StudentsTable data={students} schoolId={appUser?.school_id ?? undefined} />
     </div>

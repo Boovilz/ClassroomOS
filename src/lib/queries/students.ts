@@ -39,6 +39,29 @@ export interface StudentListRow {
 }
 
 /**
+ * Distinct, non-empty grade/classroom values currently in use among
+ * non-deleted students, sorted naturally for Thai grade labels (ป.1...ป.6,
+ * ม.1...ม.6). Powers the grade/classroom filter dropdowns, since those
+ * values are free text rather than a fixed enum.
+ */
+export async function getDistinctGradesAndClassrooms(): Promise<{ grades: string[]; classrooms: string[] }> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("students").select("grade, classroom").is("deleted_at", null);
+
+  const grades = new Set<string>();
+  const classrooms = new Set<string>();
+  for (const row of data ?? []) {
+    if (row.grade) grades.add(row.grade);
+    if (row.classroom) classrooms.add(row.classroom);
+  }
+
+  return {
+    grades: Array.from(grades).sort((a, b) => a.localeCompare(b, "th", { numeric: true })),
+    classrooms: Array.from(classrooms).sort((a, b) => a.localeCompare(b, "th", { numeric: true })),
+  };
+}
+
+/**
  * Reads the base student rows plus filters, then derives attendance rate and
  * GPA per-student from `attendance`/`scores`. Mirrors getTopStudents in
  * dashboard.ts: a follow-up query keyed by the filtered student ids rather

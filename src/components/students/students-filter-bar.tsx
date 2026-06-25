@@ -45,7 +45,7 @@ const directionOptions: FilterOption[] = [
   { value: "desc", label: "มากไปน้อย" },
 ];
 
-export function StudentsFilterBar() {
+export function StudentsFilterBar({ grades, classrooms }: { grades: string[]; classrooms: string[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -88,8 +88,13 @@ export function StudentsFilterBar() {
     );
   }
 
+  const gradeOptions: FilterOption[] = grades.map((g) => ({ value: g, label: g }));
+  const classroomOptions: FilterOption[] = classrooms.map((c) => ({ value: c, label: c }));
+
   return (
     <div className="glass-card flex flex-wrap items-center gap-4 rounded-2xl p-4">
+      <FilterGroup label="ชั้น" paramKey="grade" options={gradeOptions} />
+      <FilterGroup label="ห้อง" paramKey="classroom" options={classroomOptions} />
       <FilterGroup label="สถานะ" paramKey="status" options={statusOptions} />
       <FilterGroup label="ระดับความเสี่ยง" paramKey="risk" options={riskOptions} />
       <FilterGroup label="เพศ" paramKey="gender" options={genderOptions} />
