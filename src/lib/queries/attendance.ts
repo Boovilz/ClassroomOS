@@ -582,6 +582,75 @@ async function currentSchoolId(supabase: Awaited<ReturnType<typeof createClient>
 }
 
 // ============================================================================
+// Manual / retroactive check-in (teacher fills in a past date's roster)
+// ============================================================================
+
+export interface RosterRow {
+  student_id: string;
+  full_name: string;
+  student_code: string;
+  classroom: string | null;
+  status: AttendanceStatus | null;
+}
+
+/** Active students plus their existing attendance status (if any) for a given date. */
+export async function getRosterForDate(date: string): Promise<RosterRow[]> {
+  const supabase = await createClient();
+
+  const [{ data: students }, { data: records }] = await Promise.all([
+    supabase
+      .from("students")
+      .select("id, full_name, student_code, classroom")
+      .eq("is_active", true)
+      .is("deleted_at", null)
+      .order("student_code"),
+    supabase.from("attendance").select("student_id, status").eq("date", date),
+  ]);
+
+  const statusByStudent = new Map((records ?? []).map((r) => [r.student_id, r.status]));
+
+  return (students ?? []).map((s) => ({
+    student_id: s.id,
+    full_name: s.full_name,
+    student_code: s.student_code,
+    classroom: s.classroom,
+    status: statusByStudent.get(s.id) ?? null,
+  }));
+}
+
+/** Upserts manual attendance entries for a past (or any) date — teacher-entered, no QR. */
+export async function recordManualAttendance(
+  date: string,
+  entries: { studentId: string; status: AttendanceStatus }[]
+): Promise<{ success: boolean; message: string }> {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth?.user) return { success: false, message: "ไม่พบผู้ใช้งาน" };
+
+  const { data: profile } = await supabase.from("users").select("school_id").eq("id", auth.user.id).single();
+  if (!profile?.school_id) return { success: false, message: "ไม่พบโรงเรียน" };
+  const schoolId = profile.school_id;
+
+  if (entries.length === 0) return { success: false, message: "ไม่มีรายการให้บันทึก" };
+
+  const { error } = await supabase.from("attendance").upsert(
+    entries.map((e) => ({
+      school_id: schoolId,
+      student_id: e.studentId,
+      date,
+      status: e.status,
+      mode: "classroom" as AttendanceMode,
+      method: "manual",
+      approved_by: auth.user.id,
+    })),
+    { onConflict: "student_id,date" }
+  );
+
+  if (error) return { success: false, message: error.message };
+  return { success: true, message: `บันทึกการเช็คชื่อย้อนหลังสำเร็จ ${entries.length} รายการ` };
+}
+
+// ============================================================================
 // Teacher override
 // ============================================================================
 

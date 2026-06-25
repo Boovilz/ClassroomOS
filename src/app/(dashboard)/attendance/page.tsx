@@ -37,6 +37,9 @@ export default async function AttendancePage({ searchParams }: AttendancePagePro
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
+            <Link href="/attendance/manual">เช็คชื่อย้อนหลัง</Link>
+          </Button>
+          <Button asChild variant="outline">
             <Link href="/attendance/qr">สร้าง QR นักเรียน</Link>
           </Button>
           <Button asChild variant="outline">
