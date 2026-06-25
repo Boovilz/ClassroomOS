@@ -1,15 +1,28 @@
 import Link from "next/link";
-import { getAttendanceTable, getTodayAttendanceSummary } from "@/lib/queries/attendance";
+import { getAttendanceReport, getTodayAttendanceSummary } from "@/lib/queries/attendance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AttendanceTable } from "@/components/attendance/attendance-table";
+import { MonthlySummaryTable } from "@/components/attendance/monthly-summary-table";
 import { LiveAttendanceBoard } from "@/components/attendance/live-attendance-board";
 import { RiskStudentsPanel } from "@/components/attendance/risk-students-panel";
 
-export default async function AttendancePage() {
-  const [summary, records] = await Promise.all([
+interface AttendancePageProps {
+  searchParams: Promise<{ month?: string }>;
+}
+
+export default async function AttendancePage({ searchParams }: AttendancePageProps) {
+  const params = await searchParams;
+  const today = new Date();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const month = params.month && /^\d{4}-\d{2}$/.test(params.month) ? params.month : currentMonth;
+
+  const [year, monthNum] = month.split("-").map(Number);
+  const monthFrom = `${month}-01`;
+  const monthTo = new Date(year, monthNum, 0).toISOString().slice(0, 10);
+
+  const [summary, monthlyReport] = await Promise.all([
     getTodayAttendanceSummary(),
-    getAttendanceTable({ dateFrom: new Date().toISOString().slice(0, 10) }),
+    getAttendanceReport({ from: monthFrom, to: monthTo }),
   ]);
 
   return (
@@ -74,10 +87,10 @@ export default async function AttendancePage() {
 
       <Card className="glass-card">
         <CardHeader>
-          <CardTitle>รายชื่อวันนี้ ({summary.date})</CardTitle>
+          <CardTitle>สรุปการเข้าเรียนรายเดือน</CardTitle>
         </CardHeader>
         <CardContent>
-          <AttendanceTable data={records} />
+          <MonthlySummaryTable data={monthlyReport} month={month} />
         </CardContent>
       </Card>
 
