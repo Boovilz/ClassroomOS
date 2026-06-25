@@ -12,6 +12,7 @@ export default async function LunchDistributePage() {
     .from("students")
     .select("id, full_name, student_code, avatar_url")
     .eq("is_active", true)
+    .is("deleted_at", null)
     .order("full_name");
 
   return (

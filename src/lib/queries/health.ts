@@ -64,7 +64,7 @@ export async function getHealthDashboard(): Promise<HealthDashboardStats> {
 
   const [{ data: students }, { data: latestRecords }, { count: conditionCount }, { count: allergyCount }, { data: vaccinations }, { data: todayAlerts }] =
     await Promise.all([
-      supabase.from("students").select("id").eq("is_active", true),
+      supabase.from("students").select("id").eq("is_active", true).is("deleted_at", null),
       supabase
         .from("health_records")
         .select("student_id, nutrition_status, recorded_at")
@@ -158,7 +158,7 @@ export async function getVaccinationCoverage(): Promise<VaccinationCoveragePoint
   const supabase = await createClient();
   const [{ data: vaccinations }, { count: totalStudents }] = await Promise.all([
     supabase.from("vaccinations").select("vaccine_name, status"),
-    supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true),
+    supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true).is("deleted_at", null),
   ]);
 
   const byVaccine = new Map<string, number>();
@@ -399,11 +399,11 @@ export async function getUpcomingVaccinations(daysAhead = 30) {
   const cutoff = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const { data } = await supabase
     .from("vaccinations")
-    .select("*, students(full_name, student_code, classroom)")
+    .select("*, students(full_name, student_code, classroom, deleted_at)")
     .gte("next_due_at", today)
     .lte("next_due_at", cutoff)
     .order("next_due_at", { ascending: true });
-  return data ?? [];
+  return (data ?? []).filter((row) => !row.students || !row.students.deleted_at);
 }
 
 // ============================================================================
@@ -717,11 +717,11 @@ export async function getActiveHealthAlerts(limit = 50) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("health_alerts")
-    .select("*, students(full_name, student_code, classroom)")
+    .select("*, students(full_name, student_code, classroom, deleted_at)")
     .eq("is_resolved", false)
     .order("created_at", { ascending: false })
     .limit(limit);
-  return data ?? [];
+  return (data ?? []).filter((row) => !row.students || !row.students.deleted_at);
 }
 
 export async function resolveHealthAlert(alertId: string, resolvedBy: string) {
@@ -740,7 +740,7 @@ export async function resolveHealthAlert(alertId: string, resolvedBy: string) {
 export async function generateMissingRecordAlerts(schoolId: string): Promise<number> {
   const supabase = await createClient();
   const [{ data: students }, { data: records }, { data: overdueVaccinations }] = await Promise.all([
-    supabase.from("students").select("id, full_name").eq("school_id", schoolId).eq("is_active", true),
+    supabase.from("students").select("id, full_name").eq("school_id", schoolId).eq("is_active", true).is("deleted_at", null),
     supabase.from("health_records").select("student_id"),
     supabase
       .from("vaccinations")
@@ -812,7 +812,7 @@ export interface ClassHealthReportRow {
 export async function getClassHealthReport(): Promise<ClassHealthReportRow[]> {
   const supabase = await createClient();
   const [{ data: students }, { data: records }, { data: vaccinations }] = await Promise.all([
-    supabase.from("students").select("id, classroom").eq("is_active", true),
+    supabase.from("students").select("id, classroom").eq("is_active", true).is("deleted_at", null),
     supabase.from("health_records").select("student_id, nutrition_status, recorded_at").order("recorded_at", { ascending: false }),
     supabase.from("vaccinations").select("student_id, status").eq("status", "completed"),
   ]);

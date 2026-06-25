@@ -17,10 +17,10 @@ export default async function BehaviorPage() {
     : { data: null };
 
   const [{ data: students }, { data: records }, stats, categories, xpBoard, coinsBoard, behaviorBoard, attendanceBoard] = await Promise.all([
-    supabase.from("students").select("id, full_name, student_code, xp, coins").eq("is_active", true).order("full_name"),
+    supabase.from("students").select("id, full_name, student_code, xp, coins").eq("is_active", true).is("deleted_at", null).order("full_name"),
     supabase
       .from("behavior_records")
-      .select("id, title, category, points, occurred_at, students(full_name, student_code)")
+      .select("id, title, category, points, occurred_at, students(full_name, student_code, deleted_at)")
       .order("occurred_at", { ascending: false })
       .limit(30)
       .returns<
@@ -30,7 +30,7 @@ export default async function BehaviorPage() {
           category: string;
           points: number;
           occurred_at: string;
-          students: { full_name: string; student_code: string } | null;
+          students: { full_name: string; student_code: string; deleted_at: string | null } | null;
         }[]
       >(),
     getBehaviorDashboard(),
@@ -40,6 +40,8 @@ export default async function BehaviorPage() {
     getLeaderboard("behavior"),
     getLeaderboard("attendance"),
   ]);
+
+  const visibleRecords = (records ?? []).filter((r) => !r.students || !r.students.deleted_at);
 
   return (
     <div className="space-y-6">
@@ -100,8 +102,8 @@ export default async function BehaviorPage() {
               <CardTitle>บันทึกพฤติกรรมล่าสุด</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {records && records.length > 0 ? (
-                records.map((r) => {
+              {visibleRecords.length > 0 ? (
+                visibleRecords.map((r) => {
                   const student = Array.isArray(r.students) ? r.students[0] : r.students;
                   return (
                     <div key={r.id} className="flex items-center justify-between border-b py-2 text-sm last:border-0">

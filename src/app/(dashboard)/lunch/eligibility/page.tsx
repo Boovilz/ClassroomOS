@@ -13,7 +13,7 @@ export default async function LunchEligibilityPage() {
     : { data: null };
 
   const [{ data: students }, eligibilityList] = await Promise.all([
-    supabase.from("students").select("id, full_name, student_code").eq("is_active", true).order("full_name"),
+    supabase.from("students").select("id, full_name, student_code").eq("is_active", true).is("deleted_at", null).order("full_name"),
     profile?.school_id ? getEligibilityList(profile.school_id) : Promise.resolve([]),
   ]);
 

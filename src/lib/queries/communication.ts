@@ -288,10 +288,12 @@ export async function getLineUsersList(schoolId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("line_users")
-    .select("*, parents(full_name, student_id, students(full_name, student_code, classroom))")
+    .select("*, parents(full_name, student_id, students(full_name, student_code, classroom, deleted_at))")
     .eq("school_id", schoolId)
     .order("created_at", { ascending: false });
-  return data ?? [];
+  return (data ?? []).filter(
+    (row) => !(row as { parents: { students: { deleted_at: string | null } | null } | null }).parents?.students?.deleted_at
+  );
 }
 
 // ============================================================================
@@ -348,11 +350,13 @@ async function fanOutAnnouncement(
   const supabase = await createClient();
   const { data: allParents } = await supabase
     .from("parents")
-    .select("id, user_id, student_id, students(classroom)")
+    .select("id, user_id, student_id, students(classroom, deleted_at)")
     .eq("school_id", schoolId)
-    .returns<{ id: string; user_id: string | null; student_id: string; students: { classroom: string | null } | null }[]>();
+    .returns<
+      { id: string; user_id: string | null; student_id: string; students: { classroom: string | null; deleted_at: string | null } | null }[]
+    >();
 
-  let recipients = allParents ?? [];
+  let recipients = (allParents ?? []).filter((p) => !p.students || !p.students.deleted_at);
   if (targetParentIds && targetParentIds.length > 0) {
     recipients = recipients.filter((p) => targetParentIds.includes(p.id));
   } else if (targetClassrooms && targetClassrooms.length > 0) {
@@ -537,12 +541,13 @@ export async function notifyAssignmentCreated(params: { schoolId: string; assign
   const supabase = await createClient();
   const { data: parents } = await supabase
     .from("parents")
-    .select("id, students(classroom)")
+    .select("id, students(classroom, deleted_at)")
     .eq("school_id", params.schoolId)
-    .returns<{ id: string; students: { classroom: string | null } | null }[]>();
+    .returns<{ id: string; students: { classroom: string | null; deleted_at: string | null } | null }[]>();
+  const activeParents = (parents ?? []).filter((p) => !p.students || !p.students.deleted_at);
   const recipients = params.classroom
-    ? (parents ?? []).filter((p) => p.students?.classroom === params.classroom)
-    : parents ?? [];
+    ? activeParents.filter((p) => p.students?.classroom === params.classroom)
+    : activeParents;
 
   await Promise.all(
     recipients.map((p) =>
@@ -572,7 +577,12 @@ export async function notifyMissingSubmissions(assignmentId: string) {
   const { data: submissions } = await supabase.from("assignment_submissions").select("student_id").eq("assignment_id", assignmentId);
   const submittedIds = new Set((submissions ?? []).map((s) => s.student_id));
 
-  const { data: students } = await supabase.from("students").select("id, full_name").eq("school_id", assignment.school_id).eq("is_active", true);
+  const { data: students } = await supabase
+    .from("students")
+    .select("id, full_name")
+    .eq("school_id", assignment.school_id)
+    .eq("is_active", true)
+    .is("deleted_at", null);
   const missingStudents = (students ?? []).filter((s) => !submittedIds.has(s.id));
 
   let notified = 0;
@@ -645,10 +655,10 @@ export async function createClassGroupThread(params: { schoolId: string; classro
 
   const { data: parents } = await supabase
     .from("parents")
-    .select("id, user_id, students(classroom)")
+    .select("id, user_id, students(classroom, deleted_at)")
     .eq("school_id", params.schoolId)
-    .returns<{ id: string; user_id: string | null; students: { classroom: string | null } | null }[]>();
-  const classroomParents = (parents ?? []).filter((p) => p.students?.classroom === params.classroom);
+    .returns<{ id: string; user_id: string | null; students: { classroom: string | null; deleted_at: string | null } | null }[]>();
+  const classroomParents = (parents ?? []).filter((p) => p.students?.classroom === params.classroom && !p.students?.deleted_at);
 
   await supabase.from("message_thread_participants").insert([
     { thread_id: thread.id, user_id: params.createdBy },
@@ -1150,13 +1160,14 @@ export async function getCommunicationAnalytics(schoolId: string): Promise<Commu
 
   const { data: parentsWithClassroom } = await supabase
     .from("parents")
-    .select("id, students(classroom)")
+    .select("id, students(classroom, deleted_at)")
     .eq("school_id", schoolId)
-    .returns<{ id: string; students: { classroom: string | null } | null }[]>();
+    .returns<{ id: string; students: { classroom: string | null; deleted_at: string | null } | null }[]>();
   const { data: messages } = await supabase.from("messages").select("sender_parent_id").eq("school_id", schoolId);
   const classroomMessageCounts = new Map<string, number>();
   const parentClassroom = new Map<string, string>();
   for (const p of parentsWithClassroom ?? []) {
+    if (p.students?.deleted_at) continue;
     const classroom = p.students?.classroom;
     if (classroom) parentClassroom.set(p.id, classroom);
   }

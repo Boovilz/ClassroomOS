@@ -17,7 +17,7 @@ export default async function AcademicPage() {
     getAcademicAnalytics(),
     supabase
       .from("scores")
-      .select("id, score, max_score, term, students(full_name, student_code), subjects(name)")
+      .select("id, score, max_score, term, students(full_name, student_code, deleted_at), subjects(name)")
       .order("created_at", { ascending: false })
       .limit(20)
       .returns<
@@ -26,12 +26,14 @@ export default async function AcademicPage() {
           score: number;
           max_score: number;
           term: string | null;
-          students: { full_name: string; student_code: string } | null;
+          students: { full_name: string; student_code: string; deleted_at: string | null } | null;
           subjects: { name: string } | null;
         }[]
       >(),
     supabase.from("subjects").select("id, name").order("name"),
   ]);
+
+  const visibleScores = (scores ?? []).filter((s) => !s.students || !s.students.deleted_at);
 
   return (
     <div className="space-y-6">
@@ -163,8 +165,8 @@ export default async function AcademicPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {scores && scores.length > 0 ? (
-                scores.map((s) => {
+              {visibleScores.length > 0 ? (
+                visibleScores.map((s) => {
                   const student = Array.isArray(s.students) ? s.students[0] : s.students;
                   const subject = Array.isArray(s.subjects) ? s.subjects[0] : s.subjects;
                   return (

@@ -10,8 +10,8 @@ export default async function ReportsPage() {
   const attendanceReport = await getAttendanceReport({ from: monthAgo, to: today });
 
   const [{ data: attendance }, { data: behavior }, { data: scores }, { data: transactions }] = await Promise.all([
-    supabase.from("attendance").select("status, students(classroom)").gte("date", monthAgo).returns<
-      { status: string; students: { classroom: string | null } | null }[]
+    supabase.from("attendance").select("status, students(classroom, deleted_at)").gte("date", monthAgo).returns<
+      { status: string; students: { classroom: string | null; deleted_at: string | null } | null }[]
     >(),
     supabase
       .from("behavior_records")
@@ -30,6 +30,7 @@ export default async function ReportsPage() {
 
   const attendanceByClassroom = new Map<string, { present: number; total: number }>();
   for (const row of attendance ?? []) {
+    if (row.students?.deleted_at) continue;
     const classroom = row.students?.classroom ?? "ไม่ระบุห้อง";
     const entry = attendanceByClassroom.get(classroom) ?? { present: 0, total: 0 };
     entry.total += 1;

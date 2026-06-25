@@ -31,7 +31,7 @@ export default async function SdqPage() {
     : { data: null };
 
   const [{ data: students }, assessments, dashboard, classroomComparison] = await Promise.all([
-    supabase.from("students").select("id, full_name, student_code").eq("is_active", true).order("full_name"),
+    supabase.from("students").select("id, full_name, student_code").eq("is_active", true).is("deleted_at", null).order("full_name"),
     getSdqAssessments({ limit: 50 }),
     profile?.school_id ? getSdqDashboard(profile.school_id) : null,
     profile?.school_id ? getSdqClassroomComparison(profile.school_id) : [],

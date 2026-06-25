@@ -36,8 +36,13 @@ export async function getAcademicDashboard(): Promise<AcademicDashboard> {
 
   const [{ data: scores }, { data: subjects }, { data: assignments }, { data: submissions }, { data: outcomes }] =
     await Promise.all([
-      supabase.from("scores").select("student_id, score, max_score, students(full_name, student_code)").returns<
-        { student_id: string; score: number; max_score: number; students: { full_name: string; student_code: string } | null }[]
+      supabase.from("scores").select("student_id, score, max_score, students(full_name, student_code, deleted_at)").returns<
+        {
+          student_id: string;
+          score: number;
+          max_score: number;
+          students: { full_name: string; student_code: string; deleted_at: string | null } | null;
+        }[]
       >(),
       supabase.from("subjects").select("id", { count: "exact", head: true }),
       supabase.from("assignments").select("id", { count: "exact", head: true }),
@@ -45,7 +50,7 @@ export async function getAcademicDashboard(): Promise<AcademicDashboard> {
       supabase.from("learning_outcomes").select("status"),
     ]);
 
-  const rows = scores ?? [];
+  const rows = (scores ?? []).filter((row) => !row.students || !row.students.deleted_at);
   const byStudent = new Map<string, { total: number; count: number; full_name: string; student_code: string }>();
   let totalPercent = 0;
   for (const row of rows) {
@@ -206,7 +211,7 @@ export async function getGradebook(subjectId: string): Promise<GradebookRow[]> {
   const [{ data: scores }, weights] = await Promise.all([
     supabase
       .from("scores")
-      .select("student_id, score, max_score, component, students(full_name, student_code)")
+      .select("student_id, score, max_score, component, students(full_name, student_code, deleted_at)")
       .eq("subject_id", subjectId)
       .returns<
         {
@@ -214,7 +219,7 @@ export async function getGradebook(subjectId: string): Promise<GradebookRow[]> {
           score: number;
           max_score: number;
           component: string | null;
-          students: { full_name: string; student_code: string } | null;
+          students: { full_name: string; student_code: string; deleted_at: string | null } | null;
         }[]
       >(),
     getGradebookWeights(subjectId),
@@ -225,7 +230,7 @@ export async function getGradebook(subjectId: string): Promise<GradebookRow[]> {
     { fullName: string; studentCode: string; componentTotals: Map<string, { total: number; count: number }> }
   >();
 
-  for (const row of scores ?? []) {
+  for (const row of (scores ?? []).filter((r) => !r.students || !r.students.deleted_at)) {
     const component = row.component ?? "assignment";
     const entry = byStudent.get(row.student_id) ?? {
       fullName: row.students?.full_name ?? "-",
@@ -391,9 +396,9 @@ export async function getSubmissions(assignmentId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("assignment_submissions")
-    .select("*, students(full_name, student_code)")
+    .select("*, students(full_name, student_code, deleted_at)")
     .eq("assignment_id", assignmentId);
-  return data ?? [];
+  return (data ?? []).filter((row) => !(row as { students: { deleted_at: string | null } | null }).students?.deleted_at);
 }
 
 // ============================================================================
@@ -462,10 +467,10 @@ export async function getRubricScores(rubricId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("rubric_scores")
-    .select("*, students(full_name, student_code)")
+    .select("*, students(full_name, student_code, deleted_at)")
     .eq("rubric_id", rubricId)
     .order("created_at", { ascending: false });
-  return data ?? [];
+  return (data ?? []).filter((row) => !(row as { students: { deleted_at: string | null } | null }).students?.deleted_at);
 }
 
 // ============================================================================
@@ -696,9 +701,9 @@ export async function getCertificates(studentId?: string) {
   const supabase = await createClient();
   let query = supabase
     .from("academic_certificates")
-    .select("*, students(full_name, student_code)")
+    .select("*, students(full_name, student_code, deleted_at)")
     .order("issued_at", { ascending: false });
   if (studentId) query = query.eq("student_id", studentId);
   const { data } = await query;
-  return data ?? [];
+  return (data ?? []).filter((row) => !row.students || !row.students.deleted_at);
 }

@@ -10,6 +10,7 @@ export default async function LeaderboardPage() {
     .from("students")
     .select("id, student_code, full_name, classroom, level, xp, coins")
     .eq("is_active", true)
+    .is("deleted_at", null)
     .order("xp", { ascending: false });
 
   return (

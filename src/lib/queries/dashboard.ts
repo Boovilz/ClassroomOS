@@ -19,13 +19,13 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const [studentsRes, attendanceTodayRes, behaviorRes, studentsAgg] = await Promise.all([
-    supabase.from("students").select("id", { count: "exact", head: true }),
+    supabase.from("students").select("id", { count: "exact", head: true }).is("deleted_at", null),
     supabase.from("attendance").select("status").eq("date", today),
     supabase
       .from("behavior_records")
       .select("id", { count: "exact", head: true })
       .gte("occurred_at", weekAgo),
-    supabase.from("students").select("xp, coins"),
+    supabase.from("students").select("xp, coins").is("deleted_at", null),
   ]);
 
   const totalStudents = studentsRes.count ?? 0;
@@ -118,7 +118,7 @@ export async function getSummaryCardsData(): Promise<SummaryCardsData> {
 
   const [studentsRes, attendanceTodayRes, behaviorRes, savingsAccountsRes, savingsTxRes, healthRes] =
     await Promise.all([
-      supabase.from("students").select("gender, xp, coins, level"),
+      supabase.from("students").select("gender, xp, coins, level").is("deleted_at", null),
       supabase.from("attendance").select("status").eq("date", today),
       supabase.from("behavior_records").select("student_id, points"),
       supabase.from("finance_accounts").select("id, balance").eq("account_type", "savings"),
@@ -429,6 +429,7 @@ export async function getTopStudents(limit = 10): Promise<LeaderboardEntry[]> {
     .from("students")
     .select("id, full_name, student_code, avatar_url, level, xp, coins")
     .eq("is_active", true)
+    .is("deleted_at", null)
     .order("xp", { ascending: false })
     .limit(limit);
 
@@ -463,20 +464,28 @@ export async function getRecentActivities(limit = 15): Promise<RecentActivity[]>
   const supabase = await createClient();
   const { data } = await supabase
     .from("dashboard_activities")
-    .select("id, activity_type, description, occurred_at, students(full_name)")
+    .select("id, activity_type, description, occurred_at, students(full_name, deleted_at)")
     .order("occurred_at", { ascending: false })
     .limit(limit)
     .returns<
-      { id: string; activity_type: string; description: string; occurred_at: string; students: { full_name: string } | null }[]
+      {
+        id: string;
+        activity_type: string;
+        description: string;
+        occurred_at: string;
+        students: { full_name: string; deleted_at: string | null } | null;
+      }[]
     >();
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    activity_type: row.activity_type,
-    description: row.description,
-    occurred_at: row.occurred_at,
-    student_name: row.students?.full_name ?? null,
-  }));
+  return (data ?? [])
+    .filter((row) => !row.students || !row.students.deleted_at)
+    .map((row) => ({
+      id: row.id,
+      activity_type: row.activity_type,
+      description: row.description,
+      occurred_at: row.occurred_at,
+      student_name: row.students?.full_name ?? null,
+    }));
 }
 
 // ============================================================================
@@ -502,7 +511,7 @@ export async function getAiInsights(): Promise<AiInsight[]> {
   const supabase = await createClient();
   const { data: cached } = await supabase
     .from("dashboard_ai_insights")
-    .select("id, insight_type, severity, title, recommendation, students(full_name)")
+    .select("id, insight_type, severity, title, recommendation, students(full_name, deleted_at)")
     .is("dismissed_at", null)
     .order("generated_at", { ascending: false })
     .limit(10)
@@ -513,17 +522,19 @@ export async function getAiInsights(): Promise<AiInsight[]> {
         severity: AiInsight["severity"];
         title: string;
         recommendation: string;
-        students: { full_name: string } | null;
+        students: { full_name: string; deleted_at: string | null } | null;
       }[]
     >();
 
   if (cached && cached.length > 0) {
-    return cached.map((row) => ({ ...row, student_name: row.students?.full_name ?? null }));
+    return cached
+      .filter((row) => !row.students || !row.students.deleted_at)
+      .map((row) => ({ ...row, student_name: row.students?.full_name ?? null }));
   }
 
   const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const [{ data: students }, { data: attendance }, { data: behavior }] = await Promise.all([
-    supabase.from("students").select("id, full_name"),
+    supabase.from("students").select("id, full_name").is("deleted_at", null),
     supabase.from("attendance").select("student_id, status").gte("date", since),
     supabase.from("behavior_records").select("student_id, category, points"),
   ]);

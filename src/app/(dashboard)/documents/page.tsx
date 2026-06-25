@@ -14,10 +14,10 @@ export default async function DocumentsPage() {
     : { data: null };
 
   const [{ data: students }, { data: documents }] = await Promise.all([
-    supabase.from("students").select("id, full_name, student_code").eq("is_active", true).order("full_name"),
+    supabase.from("students").select("id, full_name, student_code").eq("is_active", true).is("deleted_at", null).order("full_name"),
     supabase
       .from("documents")
-      .select("id, title, category, file_url, created_at, students(full_name, student_code)")
+      .select("id, title, category, file_url, created_at, students(full_name, student_code, deleted_at)")
       .order("created_at", { ascending: false })
       .limit(50)
       .returns<
@@ -27,10 +27,12 @@ export default async function DocumentsPage() {
           category: string | null;
           file_url: string | null;
           created_at: string;
-          students: { full_name: string; student_code: string } | null;
+          students: { full_name: string; student_code: string; deleted_at: string | null } | null;
         }[]
       >(),
   ]);
+
+  const visibleDocuments = (documents ?? []).filter((d) => !d.students || !d.students.deleted_at);
 
   return (
     <div className="space-y-6">
@@ -58,8 +60,8 @@ export default async function DocumentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {documents && documents.length > 0 ? (
-                documents.map((d) => {
+              {visibleDocuments.length > 0 ? (
+                visibleDocuments.map((d) => {
                   const student = Array.isArray(d.students) ? d.students[0] : d.students;
                   return (
                     <TableRow key={d.id}>

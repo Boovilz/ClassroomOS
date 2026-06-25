@@ -45,10 +45,10 @@ export default async function HealthPage() {
     getBmiDistribution(),
     getVaccinationCoverage(),
     getActiveHealthAlerts(20),
-    supabase.from("students").select("id, full_name, student_code").eq("is_active", true).order("full_name"),
+    supabase.from("students").select("id, full_name, student_code").eq("is_active", true).is("deleted_at", null).order("full_name"),
     supabase
       .from("health_records")
-      .select("id, student_id, height_cm, weight_kg, bmi, nutrition_status, allergies, recorded_at, students(full_name, student_code, classroom)")
+      .select("id, student_id, height_cm, weight_kg, bmi, nutrition_status, allergies, recorded_at, students(full_name, student_code, classroom, deleted_at)")
       .order("recorded_at", { ascending: false })
       .limit(50)
       .returns<
@@ -61,10 +61,12 @@ export default async function HealthPage() {
           nutrition_status: NutritionStatus | null;
           allergies: string | null;
           recorded_at: string;
-          students: { full_name: string; student_code: string; classroom: string | null } | null;
+          students: { full_name: string; student_code: string; classroom: string | null; deleted_at: string | null } | null;
         }[]
       >(),
   ]);
+
+  const visibleRecords = (records ?? []).filter((r) => !r.students || !r.students.deleted_at);
 
   return (
     <div className="space-y-6">
@@ -207,8 +209,8 @@ export default async function HealthPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {records && records.length > 0 ? (
-                records.map((r) => {
+              {visibleRecords.length > 0 ? (
+                visibleRecords.map((r) => {
                   const student = Array.isArray(r.students) ? r.students[0] : r.students;
                   return (
                     <TableRow key={r.id}>

@@ -98,10 +98,10 @@ export async function getTodayAttendanceSummary(): Promise<TodayAttendanceSummar
   const today = new Date().toISOString().slice(0, 10);
 
   const [{ data: students }, { data: records }] = await Promise.all([
-    supabase.from("students").select("id").eq("is_active", true),
+    supabase.from("students").select("id").eq("is_active", true).is("deleted_at", null),
     supabase
       .from("attendance")
-      .select("id, student_id, status, check_in_time, mode, method, students(full_name, student_code, classroom, avatar_url)")
+      .select("id, student_id, status, check_in_time, mode, method, students(full_name, student_code, classroom, avatar_url, deleted_at)")
       .eq("date", today)
       .returns<
         {
@@ -111,13 +111,13 @@ export async function getTodayAttendanceSummary(): Promise<TodayAttendanceSummar
           check_in_time: string | null;
           mode: AttendanceMode;
           method: string;
-          students: { full_name: string; student_code: string; classroom: string | null; avatar_url: string | null } | null;
+          students: { full_name: string; student_code: string; classroom: string | null; avatar_url: string | null; deleted_at: string | null } | null;
         }[]
       >(),
   ]);
 
   const totalStudents = students?.length ?? 0;
-  const rows = records ?? [];
+  const rows = (records ?? []).filter((r) => !r.students || !r.students.deleted_at);
 
   return {
     date: today,
@@ -178,7 +178,7 @@ export async function getAttendanceTable(filters: AttendanceTableFilters = {}): 
   let query = supabase
     .from("attendance")
     .select(
-      "id, student_id, date, status, check_in_time, check_out_time, mode, method, note, approved_by, override_note, students(full_name, student_code, classroom)"
+      "id, student_id, date, status, check_in_time, check_out_time, mode, method, note, approved_by, override_note, students(full_name, student_code, classroom, deleted_at)"
     );
 
   if (filters.dateFrom) query = query.gte("date", filters.dateFrom);
@@ -190,11 +190,13 @@ export async function getAttendanceTable(filters: AttendanceTableFilters = {}): 
     .order("date", { ascending: false })
     .returns<
       (Omit<AttendanceTableRow, "full_name" | "student_code" | "classroom"> & {
-        students: { full_name: string; student_code: string; classroom: string | null } | null;
+        students: { full_name: string; student_code: string; classroom: string | null; deleted_at: string | null } | null;
       })[]
     >();
 
-  const rows = (data ?? []).map((r) => ({
+  const rows = (data ?? [])
+    .filter((r) => !r.students || !r.students.deleted_at)
+    .map((r) => ({
     id: r.id,
     student_id: r.student_id,
     full_name: r.students?.full_name ?? "-",
@@ -241,7 +243,11 @@ export interface AttendanceReportRow {
 export async function getAttendanceReport(period: AttendanceReportPeriod): Promise<AttendanceReportRow[]> {
   const supabase = await createClient();
 
-  const { data: students } = await supabase.from("students").select("id, full_name, student_code, classroom").eq("is_active", true);
+  const { data: students } = await supabase
+    .from("students")
+    .select("id, full_name, student_code, classroom")
+    .eq("is_active", true)
+    .is("deleted_at", null);
   const studentRows = students ?? [];
   if (studentRows.length === 0) return [];
 
@@ -310,7 +316,7 @@ export async function getRiskStudents(): Promise<RiskStudentRow[]> {
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const [{ data: students }, { data: attendanceRows }] = await Promise.all([
-    supabase.from("students").select("id, full_name, student_code, classroom, school_id").eq("is_active", true),
+    supabase.from("students").select("id, full_name, student_code, classroom, school_id").eq("is_active", true).is("deleted_at", null),
     supabase.from("attendance").select("student_id, date, status").gte("date", since).order("date", { ascending: false }),
   ]);
 

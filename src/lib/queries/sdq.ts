@@ -355,7 +355,7 @@ export async function getSdqAssessments(filters?: { studentId?: string; status?:
   let query = supabase
     .from("sdq_assessments")
     .select(
-      "id, assessment_date, assessment_type, assessment_period, status, total_difficulties_score, risk_level, students(id, full_name, student_code, classroom)"
+      "id, assessment_date, assessment_type, assessment_period, status, total_difficulties_score, risk_level, students(id, full_name, student_code, classroom, deleted_at)"
     )
     .order("assessment_date", { ascending: false });
 
@@ -363,8 +363,8 @@ export async function getSdqAssessments(filters?: { studentId?: string; status?:
   if (filters?.status) query = query.eq("status", filters.status);
   query = query.limit(filters?.limit ?? 50);
 
-  const { data } = await query.returns<SdqAssessmentListRow[]>();
-  return data ?? [];
+  const { data } = await query.returns<(SdqAssessmentListRow & { students: (SdqAssessmentListRow["students"] & { deleted_at: string | null }) | null })[]>();
+  return (data ?? []).filter((row) => !row.students || !row.students.deleted_at);
 }
 
 export interface SdqDashboardStats {
@@ -410,12 +410,14 @@ export async function getSdqClassroomComparison(schoolId: string): Promise<SdqCl
   const supabase = await createClient();
   const { data } = await supabase
     .from("sdq_scores")
-    .select("total_difficulties_score, risk_level, students(classroom)")
+    .select("total_difficulties_score, risk_level, students(classroom, deleted_at)")
     .eq("school_id", schoolId)
-    .returns<{ total_difficulties_score: number; risk_level: SdqRiskLevel; students: { classroom: string | null } | null }[]>();
+    .returns<
+      { total_difficulties_score: number; risk_level: SdqRiskLevel; students: { classroom: string | null; deleted_at: string | null } | null }[]
+    >();
 
   const byClassroom = new Map<string, { total: number; count: number; riskCount: number }>();
-  for (const row of data ?? []) {
+  for (const row of (data ?? []).filter((r) => !r.students || !r.students.deleted_at)) {
     const classroom = row.students?.classroom ?? "ไม่ระบุ";
     const entry = byClassroom.get(classroom) ?? { total: 0, count: 0, riskCount: 0 };
     entry.total += row.total_difficulties_score;
@@ -574,11 +576,11 @@ export async function getSdqRiskStudentReport(schoolId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("sdq_scores")
-    .select("*, students(full_name, student_code, classroom)")
+    .select("*, students(full_name, student_code, classroom, deleted_at)")
     .eq("school_id", schoolId)
     .in("risk_level", ["at_risk", "high_risk", "critical"])
     .order("total_difficulties_score", { ascending: false });
-  return data ?? [];
+  return (data ?? []).filter((row) => !(row as { students: { deleted_at: string | null } | null }).students?.deleted_at);
 }
 
 export async function getSdqSchoolSummaryReport(schoolId: string) {

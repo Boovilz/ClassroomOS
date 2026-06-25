@@ -129,6 +129,7 @@ async function buildChatContext(message: string, schoolId: string): Promise<Chat
       .select("id, full_name, classroom, risk_level")
       .eq("school_id", schoolId)
       .eq("is_active", true)
+      .is("deleted_at", null)
       .in("risk_level", ["medium", "high"])
       .limit(10);
     if (students && students.length > 0) {
@@ -263,13 +264,13 @@ export async function getAiGeneratedContent(schoolId: string, contentType?: AiCo
   const supabase = await createClient();
   let query = supabase
     .from("ai_generated_content")
-    .select("*, students(full_name, student_code, classroom)")
+    .select("*, students(full_name, student_code, classroom, deleted_at)")
     .eq("school_id", schoolId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (contentType) query = query.eq("content_type", contentType);
   const { data } = await query;
-  return data ?? [];
+  return (data ?? []).filter((row) => !row.students || !row.students.deleted_at);
 }
 
 // ============================================================================
@@ -281,7 +282,7 @@ export async function getAiCommandCenterDashboard(schoolId: string) {
   const supabase = await createClient();
 
   const [{ count: riskStudents }, recentInsights, recentAlerts, recentReports, usageToday] = await Promise.all([
-    supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("is_active", true).in("risk_level", ["medium", "high"]),
+    supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("is_active", true).is("deleted_at", null).in("risk_level", ["medium", "high"]),
     getAiGeneratedContent(schoolId, "insight", 5),
     getAiGeneratedContent(schoolId, "alert", 5),
     getAiGeneratedContent(schoolId, "report", 5),
@@ -379,6 +380,7 @@ export async function runAiWorkflow(kind: WorkflowKind, schoolId: string, create
       .select("full_name, classroom, risk_level")
       .eq("school_id", schoolId)
       .eq("is_active", true)
+      .is("deleted_at", null)
       .in("risk_level", ["medium", "high"])
       .limit(20);
     structuredFindings = (data ?? []).map((s) => `${s.full_name} (${s.classroom ?? "-"}) ระดับ ${s.risk_level}`);
@@ -566,8 +568,8 @@ export async function draftParentMessage(params: { studentName: string; topic: s
 export async function getSchoolwideAiSummary(schoolId: string) {
   const supabase = await createClient();
   const [{ count: totalStudents }, { count: riskStudents }, { count: openCases }] = await Promise.all([
-    supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("is_active", true),
-    supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("is_active", true).in("risk_level", ["medium", "high"]),
+    supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("is_active", true).is("deleted_at", null),
+    supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("is_active", true).is("deleted_at", null).in("risk_level", ["medium", "high"]),
     supabase.from("student_cases").select("id", { count: "exact", head: true }).eq("school_id", schoolId).in("status", ["open", "monitoring"]),
   ]);
 

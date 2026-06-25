@@ -53,11 +53,11 @@ export default async function HomeVisitsPage() {
 
   const [{ data: students }, { data: visits }, stats, visitCompletion, riskDistribution, incomeDistribution, welfareStatus] =
     await Promise.all([
-      supabase.from("students").select("id, full_name, student_code").eq("is_active", true).order("full_name"),
+      supabase.from("students").select("id, full_name, student_code").eq("is_active", true).is("deleted_at", null).order("full_name"),
       supabase
         .from("home_visits")
         .select(
-          "id, visit_date, visit_time, visit_type, status, summary, family_situation, follow_up_required, students(full_name, student_code)"
+          "id, visit_date, visit_time, visit_type, status, summary, family_situation, follow_up_required, students(full_name, student_code, deleted_at)"
         )
         .order("visit_date", { ascending: false })
         .limit(30)
@@ -71,7 +71,7 @@ export default async function HomeVisitsPage() {
             summary: string | null;
             family_situation: string | null;
             follow_up_required: boolean;
-            students: { full_name: string; student_code: string } | null;
+            students: { full_name: string; student_code: string; deleted_at: string | null } | null;
           }[]
         >(),
       getHomeVisitDashboard(),
@@ -80,6 +80,8 @@ export default async function HomeVisitsPage() {
       getHouseholdIncomeAnalysis(),
       getStudentWelfareStatusDistribution(),
     ]);
+
+  const visibleVisits = (visits ?? []).filter((v) => !v.students || !v.students.deleted_at);
 
   return (
     <div className="space-y-6">
@@ -221,8 +223,8 @@ export default async function HomeVisitsPage() {
           <CardTitle>รายการเยี่ยมบ้านล่าสุด</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {visits && visits.length > 0 ? (
-            visits.map((v) => {
+          {visibleVisits.length > 0 ? (
+            visibleVisits.map((v) => {
               const student = Array.isArray(v.students) ? v.students[0] : v.students;
               return (
                 <Link key={v.id} href={`/home-visits/${v.id}`} className="block">

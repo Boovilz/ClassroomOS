@@ -8,6 +8,7 @@ export default async function AttendanceQrPage() {
     .from("students")
     .select("id, full_name, student_code, classroom, avatar_url")
     .eq("is_active", true)
+    .is("deleted_at", null)
     .order("student_code");
 
   return (

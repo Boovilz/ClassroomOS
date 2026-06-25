@@ -26,7 +26,7 @@ export default async function LunchParentPortalPage() {
 
   const studentIds = (parentLinks ?? []).map((p) => p.student_id);
   const { data: children } = studentIds.length > 0
-    ? await supabase.from("students").select("id, full_name, student_code").in("id", studentIds)
+    ? await supabase.from("students").select("id, full_name, student_code").in("id", studentIds).is("deleted_at", null)
     : { data: [] };
 
   const childList = children ?? [];

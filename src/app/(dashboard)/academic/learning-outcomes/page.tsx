@@ -16,7 +16,7 @@ export default async function LearningOutcomesPage() {
   const [standards, { data: subjects }, { data: students }] = await Promise.all([
     getLearningStandards(),
     supabase.from("subjects").select("id, name").order("name"),
-    supabase.from("students").select("id, full_name, student_code").eq("is_active", true).order("full_name"),
+    supabase.from("students").select("id, full_name, student_code").eq("is_active", true).is("deleted_at", null).order("full_name"),
   ]);
 
   return (

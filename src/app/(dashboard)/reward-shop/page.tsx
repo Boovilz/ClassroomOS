@@ -14,7 +14,7 @@ export default async function RewardShopPage() {
 
   const [{ data: items }, { data: students }, history] = await Promise.all([
     supabase.from("reward_shop_items").select("*").eq("is_active", true).order("cost_coins"),
-    supabase.from("students").select("id, full_name, coins").eq("is_active", true).order("full_name"),
+    supabase.from("students").select("id, full_name, coins").eq("is_active", true).is("deleted_at", null).order("full_name"),
     getRedemptionHistory(),
   ]);
 

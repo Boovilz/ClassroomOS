@@ -59,7 +59,7 @@ export async function getLunchDashboard(): Promise<LunchDashboardStats> {
 
   const [{ data: students }, { data: todayRecords }, { data: lunchFund }, { data: inventory }, { count: specialDietCount }] =
     await Promise.all([
-      supabase.from("students").select("id").eq("is_active", true),
+      supabase.from("students").select("id").eq("is_active", true).is("deleted_at", null),
       supabase.from("meal_records").select("student_id, status, meal_type").eq("date", today),
       supabase.from("finance_accounts").select("balance").eq("account_type", "lunch_fund").maybeSingle(),
       supabase.from("food_inventory").select("quantity, reorder_level, expiration_date").eq("is_active", true),
@@ -296,10 +296,10 @@ export async function getEligibilityList(schoolId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("meal_eligibility")
-    .select("*, students(full_name, student_code, classroom, grade)")
+    .select("*, students(full_name, student_code, classroom, grade, deleted_at)")
     .eq("school_id", schoolId)
     .order("created_at", { ascending: false });
-  return data ?? [];
+  return (data ?? []).filter((row) => !row.students || !row.students.deleted_at);
 }
 
 export async function getStudentEligibility(studentId: string) {
@@ -463,11 +463,11 @@ export async function getSpecialDietList(schoolId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("allergies")
-    .select("*, students(full_name, student_code, classroom)")
+    .select("*, students(full_name, student_code, classroom, deleted_at)")
     .eq("school_id", schoolId)
     .eq("is_active", true)
     .order("created_at", { ascending: false });
-  return data ?? [];
+  return (data ?? []).filter((row) => !row.students || !row.students.deleted_at);
 }
 
 // ============================================================================
@@ -736,7 +736,12 @@ export async function getNutritionRecommendationForStudent(studentId: string) {
 
 export async function getNutritionStatusBreakdownForLunchPlanning(schoolId: string) {
   const supabase = await createClient();
-  const { data: students } = await supabase.from("students").select("id").eq("school_id", schoolId).eq("is_active", true);
+  const { data: students } = await supabase
+    .from("students")
+    .select("id")
+    .eq("school_id", schoolId)
+    .eq("is_active", true)
+    .is("deleted_at", null);
   const { data: records } = await supabase
     .from("health_records")
     .select("student_id, nutrition_status, recorded_at")
@@ -1063,7 +1068,7 @@ export async function getClassroomLunchComparison(schoolId: string): Promise<Cla
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
   const [{ data: students }, { data: records }] = await Promise.all([
-    supabase.from("students").select("id, classroom").eq("school_id", schoolId).eq("is_active", true),
+    supabase.from("students").select("id, classroom").eq("school_id", schoolId).eq("is_active", true).is("deleted_at", null),
     supabase.from("meal_records").select("student_id").eq("school_id", schoolId).eq("date", today).eq("status", "served").eq("meal_type", "lunch"),
   ]);
 

@@ -52,10 +52,10 @@ export default async function LunchPage() {
   const today = new Date().toISOString().slice(0, 10);
 
   const [{ data: students }, { data: records }, { data: lunchFund }] = await Promise.all([
-    supabase.from("students").select("id, full_name, student_code").eq("is_active", true).order("full_name"),
+    supabase.from("students").select("id, full_name, student_code").eq("is_active", true).is("deleted_at", null).order("full_name"),
     supabase
       .from("meal_records")
-      .select("id, student_id, date, meal_type, status, notes, students(full_name, student_code)")
+      .select("id, student_id, date, meal_type, status, notes, students(full_name, student_code, deleted_at)")
       .order("date", { ascending: false })
       .limit(50)
       .returns<
@@ -66,13 +66,14 @@ export default async function LunchPage() {
           meal_type: string;
           status: string;
           notes: string | null;
-          students: { full_name: string; student_code: string } | null;
+          students: { full_name: string; student_code: string; deleted_at: string | null } | null;
         }[]
       >(),
     supabase.from("finance_accounts").select("name, balance").eq("account_type", "lunch_fund").maybeSingle(),
   ]);
 
-  const todayCount = records?.filter((r) => r.date === today && r.status === "served").length ?? 0;
+  const visibleRecords = (records ?? []).filter((r) => !r.students || !r.students.deleted_at);
+  const todayCount = visibleRecords.filter((r) => r.date === today && r.status === "served").length;
   const allergyMap = await getActiveAllergyMap((students ?? []).map((s) => s.id));
   const dashboard = profile?.school_id ? await getLunchDashboard() : null;
   const aiInsights = profile?.school_id ? await getAiNutritionAnalysis(profile.school_id).catch(() => []) : [];
@@ -167,8 +168,8 @@ export default async function LunchPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {records && records.length > 0 ? (
-                records.map((r) => {
+              {visibleRecords.length > 0 ? (
+                visibleRecords.map((r) => {
                   const student = Array.isArray(r.students) ? r.students[0] : r.students;
                   const studentAllergies = allergyMap.get(r.student_id) ?? [];
                   return (

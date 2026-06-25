@@ -53,12 +53,12 @@ export async function getHomeVisitDashboard(): Promise<HomeVisitDashboardStats> 
     { count: assistanceCount },
     { count: todayCount },
   ] = await Promise.all([
-    supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true),
+    supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true).is("deleted_at", null),
     supabase.from("home_visits").select("id", { count: "exact", head: true }).eq("status", "completed"),
     supabase.from("home_visits").select("id", { count: "exact", head: true }).eq("status", "scheduled"),
-    supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true).in("risk_level", ["medium", "high"]),
-    supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true).eq("poor_student_program", true),
-    supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true).not("learning_support_status", "is", null),
+    supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true).is("deleted_at", null).in("risk_level", ["medium", "high"]),
+    supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true).is("deleted_at", null).eq("poor_student_program", true),
+    supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true).is("deleted_at", null).not("learning_support_status", "is", null),
     supabase.from("student_assistance").select("id", { count: "exact", head: true }).in("status", ["eligible", "enrolled"]),
     supabase.from("home_visits").select("id", { count: "exact", head: true }).eq("visit_date", today),
   ]);
@@ -106,7 +106,7 @@ export interface RiskDistributionPoint {
 
 export async function getStudentRiskDistribution(): Promise<RiskDistributionPoint[]> {
   const supabase = await createClient();
-  const { data } = await supabase.from("students").select("risk_level").eq("is_active", true);
+  const { data } = await supabase.from("students").select("risk_level").eq("is_active", true).is("deleted_at", null);
 
   const labels: Record<string, string> = { low: "ต่ำ", medium: "ปานกลาง", high: "สูง", none: "ยังไม่ประเมิน" };
   const counts: Record<string, number> = { low: 0, medium: 0, high: 0, none: 0 };
@@ -124,7 +124,12 @@ export interface IncomeDistributionPoint {
 
 export async function getHouseholdIncomeAnalysis(): Promise<IncomeDistributionPoint[]> {
   const supabase = await createClient();
-  const { data } = await supabase.from("students").select("family_income").eq("is_active", true).not("family_income", "is", null);
+  const { data } = await supabase
+    .from("students")
+    .select("family_income")
+    .eq("is_active", true)
+    .is("deleted_at", null)
+    .not("family_income", "is", null);
 
   const brackets = [
     { label: "< 3,000", max: 3000 },
@@ -151,7 +156,7 @@ export interface WelfareStatusPoint {
 
 export async function getStudentWelfareStatusDistribution(): Promise<WelfareStatusPoint[]> {
   const supabase = await createClient();
-  const { data } = await supabase.from("students").select("welfare_status").eq("is_active", true);
+  const { data } = await supabase.from("students").select("welfare_status").eq("is_active", true).is("deleted_at", null);
 
   const counts: Record<string, number> = { normal: 0, monitoring: 0, needs_support: 0, critical: 0, none: 0 };
   for (const row of data ?? []) {
@@ -185,12 +190,12 @@ export async function getHomeVisitCalendar(startDate: string, endDate: string): 
   const supabase = await createClient();
   const { data } = await supabase
     .from("home_visits")
-    .select("id, student_id, visit_date, visit_time, visit_type, status, purpose, follow_up_required, students(full_name, student_code, classroom)")
+    .select("id, student_id, visit_date, visit_time, visit_type, status, purpose, follow_up_required, students(full_name, student_code, classroom, deleted_at)")
     .gte("visit_date", startDate)
     .lte("visit_date", endDate)
     .order("visit_date", { ascending: true })
-    .returns<HomeVisitCalendarRow[]>();
-  return data ?? [];
+    .returns<(HomeVisitCalendarRow & { students: (HomeVisitCalendarRow["students"] & { deleted_at: string | null }) | null })[]>();
+  return (data ?? []).filter((row) => !row.students || !row.students.deleted_at);
 }
 
 export async function scheduleHomeVisit(params: {
@@ -876,12 +881,12 @@ export async function getOpenCases(schoolId: string): Promise<OpenCaseRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("student_cases")
-    .select("*, students(full_name, student_code, classroom)")
+    .select("*, students(full_name, student_code, classroom, deleted_at)")
     .eq("school_id", schoolId)
     .in("status", ["open", "monitoring"])
     .order("created_at", { ascending: false })
-    .returns<OpenCaseRow[]>();
-  return data ?? [];
+    .returns<(OpenCaseRow & { students: (OpenCaseRow["students"] & { deleted_at: string | null }) | null })[]>();
+  return (data ?? []).filter((row) => !row.students || !row.students.deleted_at);
 }
 
 // ============================================================================
@@ -981,7 +986,7 @@ export interface ClassroomWelfareSummaryRow {
 export async function getClassroomWelfareSummary(): Promise<ClassroomWelfareSummaryRow[]> {
   const supabase = await createClient();
   const [{ data: students }, { data: visits }, { data: assistance }] = await Promise.all([
-    supabase.from("students").select("id, classroom, risk_level, poor_student_program").eq("is_active", true),
+    supabase.from("students").select("id, classroom, risk_level, poor_student_program").eq("is_active", true).is("deleted_at", null),
     supabase.from("home_visits").select("student_id, status"),
     supabase.from("student_assistance").select("student_id, status").in("status", ["eligible", "enrolled"]),
   ]);
@@ -1010,6 +1015,7 @@ export async function getRiskStudentReport() {
     .from("students")
     .select("id, full_name, student_code, classroom, risk_level, poverty_risk_score, welfare_status")
     .eq("is_active", true)
+    .is("deleted_at", null)
     .in("risk_level", ["medium", "high"])
     .order("risk_level", { ascending: false });
   return data ?? [];
@@ -1019,10 +1025,10 @@ export async function getAssistanceReport(schoolId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("student_assistance")
-    .select("*, students(full_name, student_code, classroom), assistance_programs(name, program_type)")
+    .select("*, students(full_name, student_code, classroom, deleted_at), assistance_programs(name, program_type)")
     .eq("school_id", schoolId)
     .order("created_at", { ascending: false });
-  return data ?? [];
+  return (data ?? []).filter((row) => !(row as { students: { deleted_at: string | null } | null }).students?.deleted_at);
 }
 
 // ============================================================================
@@ -1086,8 +1092,8 @@ export async function getWelfareDashboard(schoolId: string): Promise<WelfareDash
   const supabase = await createClient();
   const [{ count: riskCount }, { count: scholarshipCount }, { count: assistanceCount }, { count: followUpCount }, { count: pendingCases }, successRate] =
     await Promise.all([
-      supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("is_active", true).in("risk_level", ["medium", "high"]),
-      supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("is_active", true).not("scholarship_status", "is", null),
+      supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("is_active", true).is("deleted_at", null).in("risk_level", ["medium", "high"]),
+      supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("is_active", true).is("deleted_at", null).not("scholarship_status", "is", null),
       supabase.from("student_assistance").select("id", { count: "exact", head: true }).eq("school_id", schoolId).in("status", ["eligible", "enrolled"]),
       supabase.from("home_visits").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("follow_up_required", true),
       supabase.from("student_cases").select("id", { count: "exact", head: true }).eq("school_id", schoolId).in("status", ["open", "monitoring"]),

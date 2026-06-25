@@ -56,7 +56,7 @@ export async function getBehaviorDashboard(): Promise<BehaviorDashboardStats> {
     else stats.monthNegative += r.points;
   }
 
-  const { data: students } = await supabase.from("students").select("behavior_score").eq("is_active", true);
+  const { data: students } = await supabase.from("students").select("behavior_score").eq("is_active", true).is("deleted_at", null);
   if (students && students.length > 0) {
     const scores = students.map((s) => (s as { behavior_score?: number }).behavior_score ?? 100);
     stats.averageScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
@@ -243,7 +243,8 @@ export async function getLeaderboard(category: LeaderboardCategory, limit = 10) 
     const { data: students } = await supabase
       .from("students")
       .select("id, full_name, student_code, avatar_url, level, xp, coins")
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .is("deleted_at", null);
     if (!students) return [];
     const { data: attendance } = await supabase
       .from("attendance")
@@ -271,6 +272,7 @@ export async function getLeaderboard(category: LeaderboardCategory, limit = 10) 
     .from("students")
     .select("id, full_name, student_code, avatar_url, level, xp, coins, behavior_score")
     .eq("is_active", true)
+    .is("deleted_at", null)
     .order(sortColumn, { ascending: false })
     .limit(limit);
 
@@ -424,12 +426,16 @@ export async function getRedemptionHistory(studentId?: string, limit = 30): Prom
   const supabase = await createClient();
   let query = supabase
     .from("reward_redemptions")
-    .select("id, status, redeemed_at, students(full_name, student_code), reward_shop_items(name, cost_coins)")
+    .select(
+      "id, status, redeemed_at, students(full_name, student_code, deleted_at), reward_shop_items(name, cost_coins)"
+    )
     .order("redeemed_at", { ascending: false })
     .limit(limit);
   if (studentId) query = query.eq("student_id", studentId);
-  const { data } = await query.returns<RedemptionHistoryRow[]>();
-  return data ?? [];
+  const { data } = await query.returns<
+    (RedemptionHistoryRow & { students: (RedemptionHistoryRow["students"] & { deleted_at: string | null }) | null })[]
+  >();
+  return (data ?? []).filter((row) => !row.students || !row.students.deleted_at);
 }
 
 // ============================================================================
@@ -438,7 +444,7 @@ export async function getRedemptionHistory(studentId?: string, limit = 30): Prom
 
 export async function getClassroomLevels() {
   const supabase = await createClient();
-  const { data: students } = await supabase.from("students").select("classroom, xp").eq("is_active", true);
+  const { data: students } = await supabase.from("students").select("classroom, xp").eq("is_active", true).is("deleted_at", null);
   const totals = new Map<string, number>();
   for (const s of students ?? []) {
     const classroom = s.classroom ?? "ไม่ระบุ";

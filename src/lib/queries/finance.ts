@@ -126,7 +126,7 @@ export async function getTopSavers(limit = 10): Promise<TopSaverRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("finance_accounts")
-    .select("balance, student_id, students(full_name, student_code, classroom, avatar_url)")
+    .select("balance, student_id, students(full_name, student_code, classroom, avatar_url, deleted_at)")
     .eq("account_type", "savings")
     .not("student_id", "is", null)
     .order("balance", { ascending: false })
@@ -135,12 +135,18 @@ export async function getTopSavers(limit = 10): Promise<TopSaverRow[]> {
       {
         balance: number;
         student_id: string | null;
-        students: { full_name: string; student_code: string; classroom: string | null; avatar_url: string | null } | null;
+        students: {
+          full_name: string;
+          student_code: string;
+          classroom: string | null;
+          avatar_url: string | null;
+          deleted_at: string | null;
+        } | null;
       }[]
     >();
 
   return (data ?? [])
-    .filter((row) => row.student_id && row.students)
+    .filter((row) => row.student_id && row.students && !row.students.deleted_at)
     .map((row) => ({
       student_id: row.student_id as string,
       full_name: row.students!.full_name,
@@ -156,11 +162,11 @@ export async function getInactiveAccounts(days = 60) {
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   const { data } = await supabase
     .from("finance_accounts")
-    .select("id, balance, updated_at, account_number, students(full_name, student_code, classroom)")
+    .select("id, balance, updated_at, account_number, students(full_name, student_code, classroom, deleted_at)")
     .eq("account_type", "savings")
     .lt("updated_at", cutoff)
     .order("updated_at", { ascending: true });
-  return data ?? [];
+  return (data ?? []).filter((row) => !row.students || !row.students.deleted_at);
 }
 
 export interface MonthlyTrendPoint {
@@ -248,10 +254,10 @@ export async function getAllSavingsAccounts() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("finance_accounts")
-    .select("*, students(full_name, student_code, classroom, avatar_url)")
+    .select("*, students(full_name, student_code, classroom, avatar_url, deleted_at)")
     .eq("account_type", "savings")
     .order("balance", { ascending: false });
-  return data ?? [];
+  return (data ?? []).filter((row) => !row.students || !row.students.deleted_at);
 }
 
 // ============================================================================
@@ -436,11 +442,11 @@ export async function getPendingWithdrawals() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("finance_transactions")
-    .select("*, finance_accounts(name, account_number, students(full_name, student_code))")
+    .select("*, finance_accounts(name, account_number, students(full_name, student_code, deleted_at))")
     .eq("status", "pending")
     .eq("txn_subtype", "withdrawal")
     .order("created_at", { ascending: false });
-  return data ?? [];
+  return (data ?? []).filter((row) => !row.finance_accounts?.students || !row.finance_accounts.students.deleted_at);
 }
 
 // ============================================================================
@@ -501,7 +507,7 @@ export async function getTransactionHistory(params: {
   const supabase = await createClient();
   let query = supabase
     .from("finance_transactions")
-    .select("*, finance_accounts(name, account_number, students(full_name, student_code))")
+    .select("*, finance_accounts(name, account_number, students(full_name, student_code, deleted_at))")
     .order("occurred_at", { ascending: false })
     .limit(params.limit ?? 100);
 
@@ -515,7 +521,7 @@ export async function getTransactionHistory(params: {
   }
 
   const { data } = await query;
-  return data ?? [];
+  return (data ?? []).filter((row) => !row.finance_accounts?.students || !row.finance_accounts.students.deleted_at);
 }
 
 // ============================================================================
@@ -835,7 +841,7 @@ export async function getSavingsLeaderboard(limit = 10) {
   const supabase = await createClient();
   const { data: accounts } = await supabase
     .from("finance_accounts")
-    .select("balance, student_id, created_at, students(full_name, student_code, classroom, avatar_url, xp, coins)")
+    .select("balance, student_id, created_at, students(full_name, student_code, classroom, avatar_url, xp, coins, deleted_at)")
     .eq("account_type", "savings")
     .not("student_id", "is", null);
   if (!accounts) return [];
@@ -857,7 +863,7 @@ export async function getSavingsLeaderboard(limit = 10) {
   }
 
   return accounts
-    .filter((a) => a.student_id && a.students)
+    .filter((a) => a.student_id && a.students && !a.students.deleted_at)
     .map((a) => ({
       studentId: a.student_id as string,
       fullName: a.students!.full_name,
@@ -876,12 +882,12 @@ export async function getClassroomFinanceComparison() {
   const supabase = await createClient();
   const { data: accounts } = await supabase
     .from("finance_accounts")
-    .select("balance, students(classroom)")
+    .select("balance, students(classroom, deleted_at)")
     .eq("account_type", "savings")
     .not("student_id", "is", null);
 
   const totals = new Map<string, { total: number; count: number }>();
-  for (const a of accounts ?? []) {
+  for (const a of (accounts ?? []).filter((a) => !a.students || !a.students.deleted_at)) {
     const classroom = a.students?.classroom ?? "ไม่ระบุ";
     const cur = totals.get(classroom) ?? { total: 0, count: 0 };
     cur.total += a.balance;
