@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, FileCog } from "lucide-react";
 import { DocumentFormDialog } from "./document-form-dialog";
 
 export default async function DocumentsPage() {
@@ -41,7 +42,15 @@ export default async function DocumentsPage() {
           <h1 className="text-2xl font-bold">ศูนย์เอกสาร</h1>
           <p className="text-sm text-muted-foreground">จัดเก็บและเข้าถึงเอกสารของนักเรียนและโรงเรียน</p>
         </div>
-        {profile?.school_id && <DocumentFormDialog schoolId={profile.school_id} students={students ?? []} />}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" asChild className="gap-2">
+            <Link href="/documents/templates">
+              <FileCog className="h-4 w-4" />
+              เทมเพลตเอกสาร
+            </Link>
+          </Button>
+          {profile?.school_id && <DocumentFormDialog schoolId={profile.school_id} students={students ?? []} />}
+        </div>
       </div>
 
       <Card className="glass-card">

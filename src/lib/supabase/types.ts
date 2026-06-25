@@ -1742,6 +1742,54 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["documents"]["Row"]>;
         Relationships: [];
       };
+      document_templates: {
+        Row: {
+          id: string;
+          school_id: string;
+          name: string;
+          description: string | null;
+          category: string;
+          storage_path: string;
+          fields: string[];
+          version: number;
+          status: "active" | "archived";
+          created_by: string | null;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["document_templates"]["Row"]> & {
+          school_id: string;
+          name: string;
+          category: string;
+          storage_path: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["document_templates"]["Row"]>;
+        Relationships: [];
+      };
+      generated_documents: {
+        Row: {
+          id: string;
+          school_id: string;
+          template_id: string;
+          student_id: string | null;
+          storage_path: string;
+          file_name: string;
+          generated_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["generated_documents"]["Row"]> & {
+          school_id: string;
+          template_id: string;
+          storage_path: string;
+          file_name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["generated_documents"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "generated_documents_template_id_fkey"; columns: ["template_id"]; isOneToOne: false; referencedRelation: "document_templates"; referencedColumns: ["id"] },
+          { foreignKeyName: "generated_documents_student_id_fkey"; columns: ["student_id"]; isOneToOne: false; referencedRelation: "students"; referencedColumns: ["id"] }
+        ];
+      };
       announcements: {
         Row: {
           id: string;
