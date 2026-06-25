@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiDateCalendar } from "@/components/attendance/multi-date-calendar";
 import type { RosterRow } from "@/lib/queries/attendance";
 import type { AttendanceStatus } from "@/lib/supabase/types";
 
@@ -23,7 +24,6 @@ export function ManualAttendanceForm({ dates, roster }: { dates: string[]; roste
   const router = useRouter();
   const pathname = usePathname();
   const [filter, setFilter] = useState("");
-  const [pendingDate, setPendingDate] = useState("");
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus | "">>(
     Object.fromEntries(roster.map((r) => [r.student_id, dates.length === 1 ? r.status ?? "" : ""]))
   );
@@ -39,16 +39,14 @@ export function ManualAttendanceForm({ dates, roster }: { dates: string[]; roste
     router.push(`${pathname}?dates=${next.join(",")}`);
   }
 
-  function addDate() {
-    if (!pendingDate || dates.includes(pendingDate)) return;
-    pushDates([...dates, pendingDate].sort());
-    setPendingDate("");
-  }
-
-  function removeDate(d: string) {
-    const next = dates.filter((x) => x !== d);
-    if (next.length === 0) return;
-    pushDates(next);
+  function toggleDate(d: string) {
+    if (dates.includes(d)) {
+      const next = dates.filter((x) => x !== d);
+      if (next.length === 0) return;
+      pushDates(next);
+    } else {
+      pushDates([...dates, d].sort());
+    }
   }
 
   function setStatus(studentId: string, status: AttendanceStatus | "") {
@@ -92,27 +90,30 @@ export function ManualAttendanceForm({ dates, roster }: { dates: string[]; roste
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">วันที่:</span>
-        {dates.map((d) => (
-          <Badge key={d} variant="secondary" className="gap-1">
-            {d}
-            {dates.length > 1 && (
-              <button type="button" onClick={() => removeDate(d)} aria-label={`ลบวันที่ ${d}`}>
-                <X className="h-3 w-3" />
-              </button>
-            )}
-          </Badge>
-        ))}
-        <Input type="date" value={pendingDate} onChange={(e) => setPendingDate(e.target.value)} className="w-44" />
-        <Button size="sm" variant="outline" onClick={addDate} disabled={!pendingDate}>
-          เพิ่มวันที่
-        </Button>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">วันที่เลือกไว้:</span>
+          {dates.map((d) => (
+            <Badge key={d} variant="secondary" className="gap-1">
+              {d}
+              {dates.length > 1 && (
+                <button type="button" onClick={() => toggleDate(d)} aria-label={`ลบวันที่ ${d}`}>
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </Badge>
+          ))}
+        </div>
+        <MultiDateCalendar
+          selected={dates}
+          onToggle={toggleDate}
+          initialYear={Number(dates[0].slice(0, 4))}
+          initialMonth={Number(dates[0].slice(5, 7)) - 1}
+        />
+        {dates.length > 1 && (
+          <p className="text-xs text-muted-foreground">เลือกหลายวันแล้ว — สถานะที่ตั้งให้นักเรียนแต่ละคนจะถูกบันทึกซ้ำในทุกวันที่เลือกไว้</p>
+        )}
       </div>
-
-      {dates.length > 1 && (
-        <p className="text-xs text-muted-foreground">เลือกหลายวันแล้ว — สถานะที่ตั้งให้นักเรียนแต่ละคนจะถูกบันทึกซ้ำในทุกวันที่เลือกไว้</p>
-      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Input placeholder="ค้นหาชื่อหรือรหัสนักเรียน..." value={filter} onChange={(e) => setFilter(e.target.value)} className="max-w-xs" />
