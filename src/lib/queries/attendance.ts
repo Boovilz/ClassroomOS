@@ -618,9 +618,9 @@ export async function getRosterForDate(date: string): Promise<RosterRow[]> {
   }));
 }
 
-/** Upserts manual attendance entries for a past (or any) date — teacher-entered, no QR. */
+/** Upserts manual attendance entries across one or more past (or any) dates — teacher-entered, no QR. */
 export async function recordManualAttendance(
-  date: string,
+  dates: string[],
   entries: { studentId: string; status: AttendanceStatus }[]
 ): Promise<{ success: boolean; message: string }> {
   const supabase = await createClient();
@@ -631,23 +631,24 @@ export async function recordManualAttendance(
   if (!profile?.school_id) return { success: false, message: "ไม่พบโรงเรียน" };
   const schoolId = profile.school_id;
 
-  if (entries.length === 0) return { success: false, message: "ไม่มีรายการให้บันทึก" };
+  if (dates.length === 0 || entries.length === 0) return { success: false, message: "ไม่มีรายการให้บันทึก" };
 
-  const { error } = await supabase.from("attendance").upsert(
+  const rows = dates.flatMap((date) =>
     entries.map((e) => ({
       school_id: schoolId,
       student_id: e.studentId,
       date,
       status: e.status,
       mode: "classroom" as AttendanceMode,
-      method: "manual",
+      method: "manual" as const,
       approved_by: auth.user.id,
-    })),
-    { onConflict: "student_id,date" }
+    }))
   );
 
+  const { error } = await supabase.from("attendance").upsert(rows, { onConflict: "student_id,date" });
+
   if (error) return { success: false, message: error.message };
-  return { success: true, message: `บันทึกการเช็คชื่อย้อนหลังสำเร็จ ${entries.length} รายการ` };
+  return { success: true, message: `บันทึกการเช็คชื่อย้อนหลังสำเร็จ ${entries.length} คน × ${dates.length} วัน` };
 }
 
 // ============================================================================

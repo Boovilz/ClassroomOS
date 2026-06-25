@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
+import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { RosterRow } from "@/lib/queries/attendance";
 import type { AttendanceStatus } from "@/lib/supabase/types";
@@ -17,12 +19,13 @@ const statusLabel: Record<AttendanceStatus, string> = {
   absent: "ขาดเรียน",
 };
 
-export function ManualAttendanceForm({ date, roster }: { date: string; roster: RosterRow[] }) {
+export function ManualAttendanceForm({ dates, roster }: { dates: string[]; roster: RosterRow[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const [filter, setFilter] = useState("");
+  const [pendingDate, setPendingDate] = useState("");
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus | "">>(
-    Object.fromEntries(roster.map((r) => [r.student_id, r.status ?? ""]))
+    Object.fromEntries(roster.map((r) => [r.student_id, dates.length === 1 ? r.status ?? "" : ""]))
   );
   const [saving, setSaving] = useState(false);
 
@@ -32,9 +35,20 @@ export function ManualAttendanceForm({ date, roster }: { date: string; roster: R
     return roster.filter((r) => r.full_name.toLowerCase().includes(q) || r.student_code.toLowerCase().includes(q));
   }, [roster, filter]);
 
-  function changeDate(value: string) {
-    if (!value) return;
-    router.push(`${pathname}?date=${value}`);
+  function pushDates(next: string[]) {
+    router.push(`${pathname}?dates=${next.join(",")}`);
+  }
+
+  function addDate() {
+    if (!pendingDate || dates.includes(pendingDate)) return;
+    pushDates([...dates, pendingDate].sort());
+    setPendingDate("");
+  }
+
+  function removeDate(d: string) {
+    const next = dates.filter((x) => x !== d);
+    if (next.length === 0) return;
+    pushDates(next);
   }
 
   function setStatus(studentId: string, status: AttendanceStatus | "") {
@@ -63,7 +77,7 @@ export function ManualAttendanceForm({ date, roster }: { date: string; roster: R
     const res = await fetch("/api/attendance/manual", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, entries }),
+      body: JSON.stringify({ dates, entries }),
     });
     const data = await res.json();
     setSaving(false);
@@ -78,8 +92,29 @@ export function ManualAttendanceForm({ date, roster }: { date: string; roster: R
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-muted-foreground">วันที่:</span>
+        {dates.map((d) => (
+          <Badge key={d} variant="secondary" className="gap-1">
+            {d}
+            {dates.length > 1 && (
+              <button type="button" onClick={() => removeDate(d)} aria-label={`ลบวันที่ ${d}`}>
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </Badge>
+        ))}
+        <Input type="date" value={pendingDate} onChange={(e) => setPendingDate(e.target.value)} className="w-44" />
+        <Button size="sm" variant="outline" onClick={addDate} disabled={!pendingDate}>
+          เพิ่มวันที่
+        </Button>
+      </div>
+
+      {dates.length > 1 && (
+        <p className="text-xs text-muted-foreground">เลือกหลายวันแล้ว — สถานะที่ตั้งให้นักเรียนแต่ละคนจะถูกบันทึกซ้ำในทุกวันที่เลือกไว้</p>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Input type="date" value={date} onChange={(e) => changeDate(e.target.value)} className="w-44" />
         <Input placeholder="ค้นหาชื่อหรือรหัสนักเรียน..." value={filter} onChange={(e) => setFilter(e.target.value)} className="max-w-xs" />
       </div>
 
