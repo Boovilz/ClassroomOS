@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 210 57% 97%; /* #f4f8fc */
     --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
@@ -19,16 +19,19 @@
     --secondary: 160 84% 39%; /* emerald #10b981 */
     --secondary-foreground: 0 0% 100%;
 
-    --accent: 25 95% 53%; /* orange #f97316 */
+    --accent: 38 92% 50%; /* orange #f59e0b */
     --accent-foreground: 0 0% 100%;
 
-    --warning: 25 95% 53%;
+    --warning: 38 92% 50%; /* #f59e0b */
     --warning-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%; /* #22c55e */
+    --success-foreground: 0 0% 100%;
 
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 84% 60%; /* #ef4444 */
     --destructive-foreground: 0 0% 100%;
 
     --border: 214 32% 91%;
@@ -36,6 +39,12 @@
     --ring: 221 83% 53%;
 
     --radius: 0.5rem;
+
+    /* Liquid-glass surface tokens */
+    --glass-blur: 20px;
+    --glass-bg: rgba(255, 255, 255, 0.12);
+    --glass-border: rgba(255, 255, 255, 0.25);
+    --glass-radius: 24px;
   }
 
   .dark {
@@ -60,6 +69,9 @@
     --warning: 25 95% 53%;
     --warning-foreground: 0 0% 100%;
 
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
     --muted: 217 33% 18%;
     --muted-foreground: 215 20% 65%;
 
@@ -78,6 +90,19 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  /* Liquid-glass card surface — keep off large data tables, where a solid
+     background reads better than glass. */
+  .glass-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    box-shadow: 0 8px 32px -8px rgba(15, 23, 42, 0.12), 0 2px 8px -2px rgba(15, 23, 42, 0.06);
   }
 }
 
