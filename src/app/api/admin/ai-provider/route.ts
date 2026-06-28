@@ -57,6 +57,11 @@ export async function POST(request: NextRequest) {
   if (!apiKey || !apiKey.trim()) {
     return NextResponse.json({ error: "กรุณากรอก API key" }, { status: 400 });
   }
+  // API keys are sent as HTTP Authorization headers, which only allow ASCII -
+  // reject anything else here instead of failing later when the AI is called.
+  if (!/^[\x21-\x7e]+$/.test(apiKey.trim())) {
+    return NextResponse.json({ error: "API key ไม่ถูกต้อง — ต้องเป็นอักขระภาษาอังกฤษ/ตัวเลข/สัญลักษณ์เท่านั้น (ไม่มีภาษาไทยหรือช่องว่าง)" }, { status: 400 });
+  }
 
   const dbProvider = NAME_TO_DB_PROVIDER[provider as AiProviderName];
 

@@ -169,10 +169,13 @@ export async function callAi(prompt: string, systemPrompt: string, options: Call
     if (resolved.provider === "openai") return await callOpenAi(resolved, prompt, systemPrompt, options);
     return await callGemini(resolved, prompt, systemPrompt, options);
   } catch (err) {
+    const message = err instanceof Error ? err.message : `Unknown error calling ${resolved.provider} API`;
     return {
       ok: false,
-      text: "เกิดข้อผิดพลาดในการเรียกใช้ AI กรุณาลองใหม่อีกครั้ง",
-      error: err instanceof Error ? err.message : `Unknown error calling ${resolved.provider} API`,
+      text: message.includes("ByteString")
+        ? "API key ของผู้ให้บริการ AI ที่บันทึกไว้ไม่ถูกต้อง กรุณาตั้งค่า API key ใหม่ในหน้า Settings"
+        : "เกิดข้อผิดพลาดในการเรียกใช้ AI กรุณาลองใหม่อีกครั้ง",
+      error: message,
     };
   }
 }
@@ -306,6 +309,10 @@ export async function* streamAi(prompt: string, systemPrompt: string, options: C
     else if (resolved.provider === "openai") yield* streamOpenAi(resolved, prompt, systemPrompt, options);
     else yield* streamGemini(resolved, prompt, systemPrompt, options);
   } catch (err) {
-    yield { delta: `\n\n[เกิดข้อผิดพลาด: ${err instanceof Error ? err.message : "unknown"}]`, done: true };
+    const message = err instanceof Error ? err.message : "unknown";
+    const friendly = message.includes("ByteString")
+      ? "API key ของผู้ให้บริการ AI ที่บันทึกไว้ไม่ถูกต้อง (มีอักขระที่ใช้ไม่ได้) กรุณาตั้งค่า API key ใหม่ในหน้า Settings"
+      : message;
+    yield { delta: `\n\n[เกิดข้อผิดพลาด: ${friendly}]`, done: true };
   }
 }
