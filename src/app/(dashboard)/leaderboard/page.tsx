@@ -1,14 +1,13 @@
 import { Trophy } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { LeaderboardTable } from "@/components/leaderboard/leaderboard-table";
+import { LeaderboardView } from "@/components/leaderboard/leaderboard-view";
 
 export default async function LeaderboardPage() {
   const supabase = await createClient();
 
   const { data: students } = await supabase
     .from("students")
-    .select("id, student_code, full_name, classroom, level, xp, coins")
+    .select("id, student_code, full_name, classroom, level, xp, coins, avatar_url, profile_picture_url")
     .eq("is_active", true)
     .is("deleted_at", null)
     .order("xp", { ascending: false });
@@ -23,15 +22,7 @@ export default async function LeaderboardPage() {
         </div>
       </div>
 
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle>อันดับนักเรียนทั้งหมด</CardTitle>
-          <CardDescription>เรียงลำดับตาม XP มากไปน้อย คลิกชื่อคอลัมน์เพื่อจัดเรียงใหม่</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <LeaderboardTable data={students ?? []} />
-        </CardContent>
-      </Card>
+      <LeaderboardView data={students ?? []} />
     </div>
   );
 }

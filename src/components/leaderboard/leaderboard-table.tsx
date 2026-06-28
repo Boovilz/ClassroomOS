@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export type LeaderboardRow = {
   id: string;
@@ -25,6 +26,8 @@ export type LeaderboardRow = {
   level: number;
   xp: number;
   coins: number;
+  avatar_url?: string | null;
+  profile_picture_url?: string | null;
 };
 
 export function LeaderboardTable({ data }: { data: LeaderboardRow[] }) {
@@ -42,7 +45,11 @@ export function LeaderboardTable({ data }: { data: LeaderboardRow[] }) {
         accessorKey: "full_name",
         header: "ชื่อ-นามสกุล",
         cell: ({ row }) => (
-          <Link href={`/students/${row.original.id}`} className="font-medium text-primary hover:underline">
+          <Link href={`/students/${row.original.id}`} className="flex items-center gap-2 font-medium text-primary hover:underline">
+            <Avatar className="h-7 w-7">
+              <AvatarImage src={row.original.profile_picture_url ?? row.original.avatar_url ?? undefined} />
+              <AvatarFallback className="text-xs">{row.original.full_name.charAt(0)}</AvatarFallback>
+            </Avatar>
             {row.original.full_name}
           </Link>
         ),
