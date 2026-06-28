@@ -20,7 +20,7 @@ export default async function AiAssistantPage() {
     : { data: null };
 
   const schoolId = profile?.school_id ?? null;
-  const aiConfigured = isAiConfigured();
+  const aiConfigured = await isAiConfigured(schoolId);
   const dashboard = schoolId ? await getAiCommandCenterDashboard(schoolId) : null;
 
   return (

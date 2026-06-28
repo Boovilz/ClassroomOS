@@ -10,6 +10,7 @@ import { BackupTab } from "./backup-tab";
 import { ThemeTab } from "./theme-tab";
 import { SecurityTab } from "./security-tab";
 import { SubscriptionTab } from "./subscription-tab";
+import { AiProviderTab } from "./ai-provider-tab";
 import { BootstrapSuperAdminBanner } from "./bootstrap-super-admin-banner";
 
 export default async function SettingsPage() {
@@ -224,11 +225,19 @@ export default async function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="ai">
+        <TabsContent value="ai" className="space-y-4">
           <Card className="glass-card">
             <CardHeader>
-              <CardTitle>การตั้งค่า AI</CardTitle>
-              <CardDescription>ใช้ Claude (Anthropic) เท่านั้น — ไม่รองรับ GPT/Gemini/Ollama ในระบบนี้</CardDescription>
+              <CardTitle>ผู้ให้บริการ AI</CardTitle>
+              <CardDescription>เลือกและตั้งค่า API key ของผู้ให้บริการ AI สำหรับโรงเรียนนี้ — รองรับ Anthropic (Claude), OpenAI (GPT), และ Google Gemini</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AiProviderTab />
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>การตั้งค่า AI อื่นๆ</CardTitle>
             </CardHeader>
             <CardContent>
               <SettingsCategoryForm

@@ -299,7 +299,7 @@ export async function getAiCommandCenterDashboard(schoolId: string) {
   );
 
   return {
-    aiConfigured: isAiConfigured(),
+    aiConfigured: await isAiConfigured(schoolId),
     riskStudentsCount: riskStudents ?? 0,
     recentInsights,
     recentAlerts,
