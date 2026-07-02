@@ -1,23 +1,41 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Printer } from "lucide-react";
 
 function classifyGrade(grade: string): "ปฐมวัย" | "ประถมศึกษา" | "มัธยมต้น" | "มัธยมปลาย" | "อื่นๆ" {
-  if (/อ\.|K|อนุบาล/.test(grade)) return "ปฐมวัย";
-  if (/ป\.|^P|ประถม/.test(grade)) return "ประถมศึกษา";
+  if (/อ\.|K|อนุบาล|บ\./.test(grade)) return "ปฐมวัย";
+  if (/ป\./.test(grade)) return "ประถมศึกษา";
   if (/ม\.1|ม\.2|ม\.3/.test(grade)) return "มัธยมต้น";
   if (/ม\.4|ม\.5|ม\.6/.test(grade)) return "มัธยมปลาย";
   return "อื่นๆ";
+}
+
+const LEVEL_ORDER = ["ปฐมวัย", "ประถมศึกษา", "มัธยมต้น", "มัธยมปลาย", "อื่นๆ"] as const;
+
+const LEVEL_LABEL: Record<string, string> = {
+  ปฐมวัย: "ระดับปฐมวัย",
+  ประถมศึกษา: "ระดับชั้นประถมศึกษา",
+  มัธยมต้น: "ระดับชั้นมัธยมศึกษาตอนต้น",
+  มัธยมปลาย: "ระดับชั้นมัธยมศึกษาตอนปลาย",
+  อื่นๆ: "ระดับอื่นๆ",
+};
+
+function gradeFullName(grade: string): string {
+  const match = grade.match(/^([ปมอ])\.([1-9])$/);
+  if (!match) return grade;
+  const [, prefix, num] = match;
+  const names: Record<string, string> = {
+    ป: "ชั้นประถมศึกษาปีที่",
+    ม: "ชั้นมัธยมศึกษาปีที่",
+    อ: "ชั้นอนุบาลปีที่",
+  };
+  return `${names[prefix] ?? grade} ${num}`;
+}
+
+function gradeSort(grade: string): number {
+  const match = grade.match(/^[ปมอ]\.([1-9])$/);
+  return match ? parseInt(match[1]) : 99;
 }
 
 interface StudentRow {
@@ -31,7 +49,6 @@ interface ClassroomStat {
   classroom: string;
   male: number;
   female: number;
-  other: number;
 }
 
 export default async function StudentStatsPage() {
@@ -48,6 +65,13 @@ export default async function StudentStatsPage() {
     schoolId = profile?.school_id ?? null;
   }
 
+  const { data: school } = schoolId
+    ? await supabase.from("schools").select("name").eq("id", schoolId).single()
+    : { data: null };
+
+  const schoolName = school?.name ?? "";
+  const academicYear = new Date().getFullYear() + 543;
+
   let students: StudentRow[] = [];
   if (schoolId) {
     const { data } = await supabase
@@ -59,64 +83,54 @@ export default async function StudentStatsPage() {
     students = (data as StudentRow[]) ?? [];
   }
 
-  // Aggregate counts
-  const total = students.length;
-  let pratom = 0;
-  let pathomwai = 0;
-  let matthayomTon = 0;
-  let matthayomPlai = 0;
-
-  // Build classroom breakdown map
+  // Aggregate per grade+classroom
   const classroomMap = new Map<string, ClassroomStat>();
-
   for (const s of students) {
-    const level = classifyGrade(s.grade ?? "");
-    if (level === "ปฐมวัย") pathomwai++;
-    else if (level === "ประถมศึกษา") pratom++;
-    else if (level === "มัธยมต้น") matthayomTon++;
-    else if (level === "มัธยมปลาย") matthayomPlai++;
-
-    const key = `${s.grade}__${s.classroom}`;
+    const key = `${s.grade ?? ""}__${s.classroom ?? ""}`;
     if (!classroomMap.has(key)) {
-      classroomMap.set(key, { grade: s.grade ?? "", classroom: s.classroom ?? "", male: 0, female: 0, other: 0 });
+      classroomMap.set(key, { grade: s.grade ?? "", classroom: s.classroom ?? "", male: 0, female: 0 });
     }
     const stat = classroomMap.get(key)!;
     const g = (s.gender ?? "").toLowerCase();
     if (g === "male" || g === "ชาย" || g === "m") stat.male++;
     else if (g === "female" || g === "หญิง" || g === "f") stat.female++;
-    else stat.other++;
   }
 
-  const matthayom = matthayomTon + matthayomPlai;
+  // Group by level
+  const levelGroups = new Map<string, ClassroomStat[]>();
+  for (const level of LEVEL_ORDER) {
+    levelGroups.set(level, []);
+  }
+  for (const stat of classroomMap.values()) {
+    const level = classifyGrade(stat.grade);
+    levelGroups.get(level)!.push(stat);
+  }
 
-  // Sort classrooms: by grade alphabetically, then classroom
-  const classroomStats = Array.from(classroomMap.values()).sort((a, b) => {
-    if (a.grade < b.grade) return -1;
-    if (a.grade > b.grade) return 1;
-    if (a.classroom < b.classroom) return -1;
-    if (a.classroom > b.classroom) return 1;
-    return 0;
+  // Sort within each level: by grade number, then classroom
+  for (const stats of levelGroups.values()) {
+    stats.sort((a, b) => {
+      const gDiff = gradeSort(a.grade) - gradeSort(b.grade);
+      if (gDiff !== 0) return gDiff;
+      return a.classroom.localeCompare(b.classroom, "th");
+    });
+  }
+
+  // Build rows with running sequence number
+  let seq = 0;
+  const grandMale = Array.from(classroomMap.values()).reduce((s, r) => s + r.male, 0);
+  const grandFemale = Array.from(classroomMap.values()).reduce((s, r) => s + r.female, 0);
+  const grandTotal = grandMale + grandFemale;
+
+  const printDate = new Date().toLocaleDateString("th-TH", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 
-  // Group by grade
-  const gradeGroups = new Map<string, ClassroomStat[]>();
-  for (const stat of classroomStats) {
-    if (!gradeGroups.has(stat.grade)) gradeGroups.set(stat.grade, []);
-    gradeGroups.get(stat.grade)!.push(stat);
-  }
-
-  const grades = Array.from(gradeGroups.keys());
-
-  // Grand totals
-  const grandMale = classroomStats.reduce((s, r) => s + r.male, 0);
-  const grandFemale = classroomStats.reduce((s, r) => s + r.female, 0);
-  const grandOther = classroomStats.reduce((s, r) => s + r.other, 0);
-  const grandTotal = grandMale + grandFemale + grandOther;
-
   return (
-    <div className="container mx-auto px-4 py-6 space-y-6 print:px-0 print:py-0">
-      {/* Header */}
-      <div className="flex items-center justify-between print:hidden">
+    <div className="container mx-auto px-4 py-6 print:px-2 print:py-2">
+      {/* Screen nav */}
+      <div className="flex items-center justify-between mb-6 no-print">
         <div className="flex items-center gap-3">
           <Link href="/students">
             <Button variant="ghost" size="sm" className="gap-1">
@@ -124,7 +138,7 @@ export default async function StudentStatsPage() {
               กลับ
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold">สถิตินักเรียน</h1>
+          <h1 className="text-xl font-bold">รายงานสถิติจำนวนนักเรียน</h1>
         </div>
         <Button
           variant="outline"
@@ -137,163 +151,86 @@ export default async function StudentStatsPage() {
         </Button>
       </div>
 
-      {/* Print-only header */}
-      <div className="hidden print:block text-center pb-4 border-b">
-        <h1 className="text-2xl font-bold">สถิตินักเรียน</h1>
-      </div>
+      {/* Report */}
+      <div className="max-w-4xl mx-auto print:max-w-full">
+        {/* Report title */}
+        <div className="text-center mb-4">
+          <h1 className="text-lg font-bold">รายงานสถิติจำนวนนักเรียน (สถานะปกติ)</h1>
+          <p className="text-sm mt-1">
+            โรงเรียน{schoolName}&nbsp;&nbsp;&nbsp;ปีการศึกษา {academicYear}
+          </p>
+        </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 print:grid-cols-4 print:gap-2">
-        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">
-              นักเรียนทั้งหมด
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-blue-800 dark:text-blue-200">{total.toLocaleString()}</p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">คน</p>
-          </CardContent>
-        </Card>
+        {/* Table */}
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border border-gray-400 px-2 py-1 text-center w-12">ลำดับ</th>
+              <th className="border border-gray-400 px-2 py-1 text-left">ระดับชั้น</th>
+              <th className="border border-gray-400 px-2 py-1 text-center w-12">ห้อง</th>
+              <th className="border border-gray-400 px-2 py-1 text-center w-20">ชาย (คน)</th>
+              <th className="border border-gray-400 px-2 py-1 text-center w-20">หญิง (คน)</th>
+              <th className="border border-gray-400 px-2 py-1 text-center w-20">รวม (คน)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {LEVEL_ORDER.map((level) => {
+              const rows = levelGroups.get(level)!;
+              if (rows.length === 0) return null;
+              const levelMale = rows.reduce((s, r) => s + r.male, 0);
+              const levelFemale = rows.reduce((s, r) => s + r.female, 0);
+              const levelTotal = levelMale + levelFemale;
+              return (
+                <>
+                  {rows.map((row) => {
+                    seq++;
+                    return (
+                      <tr key={`${row.grade}-${row.classroom}`}>
+                        <td className="border border-gray-300 px-2 py-0.5 text-center">{seq}</td>
+                        <td className="border border-gray-300 px-2 py-0.5">{gradeFullName(row.grade)}</td>
+                        <td className="border border-gray-300 px-2 py-0.5 text-center">{row.classroom}</td>
+                        <td className="border border-gray-300 px-2 py-0.5 text-center">{row.male}</td>
+                        <td className="border border-gray-300 px-2 py-0.5 text-center">{row.female}</td>
+                        <td className="border border-gray-300 px-2 py-0.5 text-center">{row.male + row.female}</td>
+                      </tr>
+                    );
+                  })}
+                  {/* Level subtotal row */}
+                  <tr className="font-bold bg-gray-50">
+                    <td className="border border-gray-300 px-2 py-0.5 text-center"></td>
+                    <td className="border border-gray-300 px-2 py-0.5">รวม{LEVEL_LABEL[level]}</td>
+                    <td className="border border-gray-300 px-2 py-0.5 text-center"></td>
+                    <td className="border border-gray-300 px-2 py-0.5 text-center">{levelMale}</td>
+                    <td className="border border-gray-300 px-2 py-0.5 text-center">{levelFemale}</td>
+                    <td className="border border-gray-300 px-2 py-0.5 text-center">{levelTotal}</td>
+                  </tr>
+                </>
+              );
+            })}
+            {/* Grand total */}
+            <tr className="font-bold bg-gray-100">
+              <td className="border border-gray-400 px-2 py-1 text-center"></td>
+              <td className="border border-gray-400 px-2 py-1">รวมทั้งโรงเรียน</td>
+              <td className="border border-gray-400 px-2 py-1 text-center"></td>
+              <td className="border border-gray-400 px-2 py-1 text-center">{grandMale}</td>
+              <td className="border border-gray-400 px-2 py-1 text-center">{grandFemale}</td>
+              <td className="border border-gray-400 px-2 py-1 text-center">{grandTotal}</td>
+            </tr>
+          </tbody>
+        </table>
 
-        <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950 dark:border-purple-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">
-              ปฐมวัย
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-purple-800 dark:text-purple-200">{pathomwai.toLocaleString()}</p>
-            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">คน</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">
-              ประถมศึกษา
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-green-800 dark:text-green-200">{pratom.toLocaleString()}</p>
-            <p className="text-xs text-green-600 dark:text-green-400 mt-1">คน</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-orange-700 dark:text-orange-300">
-              มัธยมศึกษา
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-orange-800 dark:text-orange-200">{matthayom.toLocaleString()}</p>
-            <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-              คน (ต้น {matthayomTon} / ปลาย {matthayomPlai})
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Classroom Breakdown Table */}
-      <Card className="print:shadow-none print:border-0">
-        <CardHeader>
-          <CardTitle className="text-lg">ตารางแยกตามห้องเรียน</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="font-semibold">ระดับชั้น</TableHead>
-                  <TableHead className="font-semibold">ห้อง</TableHead>
-                  <TableHead className="text-center font-semibold">ชาย</TableHead>
-                  <TableHead className="text-center font-semibold">หญิง</TableHead>
-                  <TableHead className="text-center font-semibold">รวม</TableHead>
-                  <TableHead className="font-semibold">หมายเหตุ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {grades.map((grade) => {
-                  const rows = gradeGroups.get(grade)!;
-                  const subtotalMale = rows.reduce((s, r) => s + r.male, 0);
-                  const subtotalFemale = rows.reduce((s, r) => s + r.female, 0);
-                  const subtotalOther = rows.reduce((s, r) => s + r.other, 0);
-                  const subtotal = subtotalMale + subtotalFemale + subtotalOther;
-
-                  return (
-                    <>
-                      {rows.map((row, idx) => (
-                        <TableRow key={`${grade}-${row.classroom}-${idx}`}>
-                          {idx === 0 ? (
-                            <TableCell
-                              rowSpan={rows.length + 1}
-                              className="font-medium align-top border-r bg-muted/20"
-                            >
-                              {grade}
-                            </TableCell>
-                          ) : null}
-                          <TableCell>{row.classroom}</TableCell>
-                          <TableCell className="text-center">{row.male}</TableCell>
-                          <TableCell className="text-center">{row.female}</TableCell>
-                          <TableCell className="text-center font-medium">
-                            {row.male + row.female + row.other}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {row.other > 0 ? `อื่นๆ ${row.other} คน` : ""}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {/* Subtotal row */}
-                      <TableRow className="bg-muted/40 font-semibold">
-                        <TableCell className="text-right text-sm text-muted-foreground pr-2">
-                          รวม {grade}
-                        </TableCell>
-                        <TableCell className="text-center">{subtotalMale}</TableCell>
-                        <TableCell className="text-center">{subtotalFemale}</TableCell>
-                        <TableCell className="text-center">{subtotal}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {subtotalOther > 0 ? `อื่นๆ ${subtotalOther} คน` : ""}
-                        </TableCell>
-                      </TableRow>
-                    </>
-                  );
-                })}
-
-                {/* Grand Total */}
-                <TableRow className="bg-primary/10 font-bold text-base border-t-2">
-                  <TableCell colSpan={2} className="font-bold">
-                    รวมทั้งหมด
-                  </TableCell>
-                  <TableCell className="text-center">{grandMale}</TableCell>
-                  <TableCell className="text-center">{grandFemale}</TableCell>
-                  <TableCell className="text-center">{grandTotal}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {grandOther > 0 ? `อื่นๆ ${grandOther} คน` : ""}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Print footer */}
-      <div className="hidden print:block text-center text-sm text-muted-foreground pt-4 border-t">
-        พิมพ์เมื่อวันที่ {new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })}
+        {/* Print date */}
+        <p className="text-xs text-right mt-4 text-gray-500">
+          พิมพ์เมื่อวันที่ {printDate}
+        </p>
       </div>
 
       <style>{`
         @media print {
-          nav, aside, header[data-sidebar], [data-sidebar] {
-            display: none !important;
-          }
-          body {
-            background: white !important;
-          }
-          .container {
-            max-width: 100% !important;
-          }
+          .no-print { display: none !important; }
+          nav, aside, header, [data-sidebar] { display: none !important; }
+          body { background: white !important; }
+          .container { max-width: 100% !important; padding: 0 !important; }
         }
       `}</style>
     </div>

@@ -1446,6 +1446,26 @@ export interface Database {
           { foreignKeyName: "meal_records_menu_id_fkey"; columns: ["menu_id"]; isOneToOne: false; referencedRelation: "menus"; referencedColumns: ["id"] }
         ];
       };
+      classroom_daily_records: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          date: string;
+          record_type: "milk" | "tooth_brush";
+          status: "yes" | "no" | "absent";
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["classroom_daily_records"]["Row"]> & {
+          school_id: string;
+          student_id: string;
+          date: string;
+          record_type: "milk" | "tooth_brush";
+          status: "yes" | "no" | "absent";
+        };
+        Update: Partial<Database["public"]["Tables"]["classroom_daily_records"]["Row"]>;
+        Relationships: [];
+      };
       menus: {
         Row: {
           id: string;
