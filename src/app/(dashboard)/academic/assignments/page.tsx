@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAssignments, getRubrics } from "@/lib/queries/academic";
 import { AssignmentCard } from "@/components/academic/assignment-card";
 import { AssignmentFormDialog } from "@/components/academic/assignment-form-dialog";
+import { AssignmentQrDialog } from "@/components/academic/assignment-qr";
 import { RubricBuilder } from "@/components/academic/rubric-builder";
 import { RubricScoringGrid } from "@/components/academic/rubric-scoring-grid";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +38,14 @@ export default async function AssignmentsPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {assignments.length > 0 ? (
-          assignments.map((a) => <AssignmentCard key={a.id} assignment={a} />)
+          assignments.map((a) => (
+            <div key={a.id} className="relative">
+              <AssignmentCard assignment={a} />
+              <div className="absolute top-3 right-3">
+                <AssignmentQrDialog assignment={{ id: a.id, title: a.title, due_date: a.due_date ?? null, max_score: a.max_score }} />
+              </div>
+            </div>
+          ))
         ) : (
           <p className="text-sm text-muted-foreground">ยังไม่มีงาน/การประเมินในระบบ</p>
         )}

@@ -385,6 +385,15 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
               <Button asChild variant="outline">
                 <Link href={`/students/${id}/pp6`}>ปพ.6</Link>
               </Button>
+              <Button asChild variant="outline">
+                <Link href={`/students/${id}/pp7`}>ปพ.7 (ใบรับรองนักเรียน)</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={`/students/${id}/savings-report`}>รายงานบัญชีออมทรัพย์</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={`/students/${id}/eq`}>ประเมิน EQ</Link>
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

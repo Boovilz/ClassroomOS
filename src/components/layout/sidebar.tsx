@@ -22,6 +22,7 @@ import {
   Users,
   Sparkles,
   ShieldCheck,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/types";
@@ -38,6 +39,8 @@ const NAV_ITEMS = [
   { href: "/health", label: "สุขภาพนักเรียน", icon: HeartPulse },
   { href: "/lunch", label: "อาหารกลางวัน", icon: Utensils },
   { href: "/home-visits", label: "เยี่ยมบ้าน", icon: Home },
+  { href: "/clubs", label: "ชุมนุม", icon: Users },
+  { href: "/supervision", label: "นิเทศการสอน", icon: ClipboardCheck },
   { href: "/sdq", label: "ประเมิน SDQ", icon: ClipboardList },
   { href: "/documents", label: "เอกสาร", icon: FileText },
   { href: "/communication", label: "สื่อสารผู้ปกครอง", icon: MessageCircle },
