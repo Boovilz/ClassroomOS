@@ -16,6 +16,9 @@ export interface StudentsListFilters {
    *  "trash" view; defaults to false so every existing call site keeps
    *  filtering out soft-deleted students with no changes required. */
   includeDeleted?: boolean;
+  /** Filter by academic year as Buddhist Era year (e.g. 2568). Derived from
+   *  enrollment_date: gregorian year = yearFilter - 543. */
+  yearFilter?: number;
 }
 
 export interface StudentListRow {
@@ -34,6 +37,7 @@ export interface StudentListRow {
   is_archived: boolean;
   risk_level: "low" | "medium" | "high" | null;
   deleted_at: string | null;
+  birth_date: string | null;
   attendanceRate: number | null;
   gpa: number | null;
 }
@@ -73,7 +77,7 @@ export async function getStudentsList(filters: StudentsListFilters = {}): Promis
   let query = supabase
     .from("students")
     .select(
-      "id, school_id, student_code, citizen_id, full_name, nickname, gender, grade, classroom, avatar_url, profile_picture_url, is_active, is_archived, risk_level, deleted_at"
+      "id, school_id, student_code, citizen_id, full_name, nickname, gender, grade, classroom, avatar_url, profile_picture_url, is_active, is_archived, risk_level, deleted_at, birth_date"
     );
 
   if (!filters.includeDeleted) query = query.is("deleted_at", null);
@@ -83,6 +87,12 @@ export async function getStudentsList(filters: StudentsListFilters = {}): Promis
   if (filters.riskLevel) query = query.eq("risk_level", filters.riskLevel as "low" | "medium" | "high");
   if (filters.status === "archived") query = query.eq("is_archived", true);
   else if (filters.status === "active") query = query.eq("is_archived", false);
+  if (filters.yearFilter) {
+    const gregorianYear = filters.yearFilter - 543;
+    query = query
+      .gte("enrollment_date", `${gregorianYear}-01-01`)
+      .lt("enrollment_date", `${gregorianYear + 1}-01-01`);
+  }
 
   const { data: students } = await query.order("student_code");
   const rows = students ?? [];

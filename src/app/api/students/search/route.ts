@@ -18,19 +18,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, message: "Missing schoolId" }, { status: 400 });
   }
 
-  if (!q) {
-    return NextResponse.json({ success: true, students: [] });
-  }
+  const limit = parseInt(searchParams.get("limit") ?? "20", 10);
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("students")
-    .select("id, full_name, student_code, classroom")
+    .select(
+      "id, full_name, student_code, grade, classroom, gender, blood_type, birth_date, citizen_id, profile_picture_url"
+    )
     .eq("school_id", schoolId)
     .eq("is_active", true)
     .is("deleted_at", null)
-    .or(`full_name.ilike.%${q}%,student_code.ilike.%${q}%`)
     .order("full_name")
-    .limit(20);
+    .limit(limit);
+
+  if (q) {
+    query = query.or(`full_name.ilike.%${q}%,student_code.ilike.%${q}%`);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

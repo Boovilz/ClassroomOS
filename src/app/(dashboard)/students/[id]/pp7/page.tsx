@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getStudentAcademicSummary } from "@/lib/queries/academic";
-import { Pp7Print } from "@/components/academic/pp7-print";
+import { Pp7Client } from "./pp7-client";
 import { Button } from "@/components/ui/button";
 
 export default async function Pp7Page({ params }: { params: Promise<{ id: string }> }) {
@@ -35,7 +35,7 @@ export default async function Pp7Page({ params }: { params: Promise<{ id: string
           <Link href={`/students/${id}`}>← กลับ</Link>
         </Button>
       </div>
-      <Pp7Print
+      <Pp7Client
         student={{
           full_name: studentRow.full_name ?? summary.fullName,
           code: studentRow.student_code ?? summary.studentCode,
@@ -49,6 +49,8 @@ export default async function Pp7Page({ params }: { params: Promise<{ id: string
           address: school?.address,
           phone: school?.phone,
         }}
+        defaultGpa={summary.gpa ?? null}
+        defaultAttendanceRate={summary.attendanceRatePercent ?? null}
       />
     </div>
   );

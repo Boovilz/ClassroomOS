@@ -120,5 +120,24 @@
     color: black !important;
     box-shadow: none !important;
   }
+  /* Student roster print: hide everything, show only #print-roster.
+     Uses visibility (not display) so nested elements can be made visible
+     without requiring the element to be a direct child of body. */
+  body:has(#print-roster) * {
+    visibility: hidden !important;
+  }
+  body:has(#print-roster) #print-roster,
+  body:has(#print-roster) #print-roster * {
+    visibility: visible !important;
+  }
+  body:has(#print-roster) #print-roster {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
 }
 

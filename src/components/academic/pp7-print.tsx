@@ -20,6 +20,17 @@ interface Props {
   issueDate?: string;
   academicYear?: string;
   semester?: string;
+  // NEW
+  documentNumber?: string;
+  certPurpose?: string;
+  showGpa?: boolean;
+  gpa?: number | null;
+  showAttendance?: boolean;
+  attendanceRate?: number | null;
+  showBehavior?: boolean;
+  behaviorScore?: number | null;
+  certText?: string;
+  hidePrintButton?: boolean;
 }
 
 function formatThaiDate(dateStr?: string): string {
@@ -27,19 +38,40 @@ function formatThaiDate(dateStr?: string): string {
   return new Date(dateStr).toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
 }
 
-export function Pp7Print({ student, school, issueDate, academicYear, semester }: Props) {
+export function Pp7Print({
+  student,
+  school,
+  issueDate,
+  academicYear,
+  semester,
+  documentNumber,
+  certPurpose,
+  showGpa,
+  gpa,
+  showAttendance,
+  attendanceRate,
+  showBehavior,
+  behaviorScore,
+  certText,
+  hidePrintButton,
+}: Props) {
   const issueDateFormatted = issueDate ? formatThaiDate(issueDate) : formatThaiDate();
-  const year = academicYear ?? new Date().getFullYear() + 543;
+  const year = academicYear ?? String(new Date().getFullYear() + 543);
   const sem = semester ?? "1";
+  const purpose = certPurpose?.trim() || "รับรองความเป็นนักเรียน";
+
+  const hasExtraData = (showGpa && gpa != null) || (showAttendance && attendanceRate != null) || (showBehavior && behaviorScore != null);
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end print:hidden">
-        <Button variant="outline" onClick={() => window.print()} className="gap-2">
-          <Printer className="h-4 w-4" />
-          พิมพ์ / บันทึก PDF
-        </Button>
-      </div>
+      {!hidePrintButton && (
+        <div className="flex justify-end print:hidden">
+          <Button variant="outline" onClick={() => window.print()} className="gap-2">
+            <Printer className="h-4 w-4" />
+            พิมพ์ / บันทึก PDF
+          </Button>
+        </div>
+      )}
 
       <div className="print-page mx-auto max-w-2xl rounded-2xl border-2 border-border bg-card p-10 print:rounded-none print:border-0">
         {/* Header */}
@@ -56,7 +88,11 @@ export function Pp7Print({ student, school, issueDate, academicYear, semester }:
 
         {/* Certificate body */}
         <div className="mb-8 leading-relaxed text-sm space-y-4">
-          <p className="text-right text-sm text-muted-foreground">วันที่ออกเอกสาร: {issueDateFormatted}</p>
+          {/* Top-right meta */}
+          <div className="flex justify-between items-start text-sm text-muted-foreground">
+            <span>{documentNumber ? <span>เลขที่: <span className="font-semibold text-foreground">{documentNumber}</span></span> : null}</span>
+            <span>วันที่ออกเอกสาร: {issueDateFormatted}</span>
+          </div>
 
           <p className="indent-8">
             ขอรับรองว่า{" "}
@@ -74,6 +110,11 @@ export function Pp7Print({ student, school, issueDate, academicYear, semester }:
             ของ{school.name} เป็นนักเรียนที่มีสถานภาพสมบูรณ์ตามระเบียบกระทรวงศึกษาธิการ
           </p>
 
+          {/* Purpose */}
+          <p className="indent-8">
+            หนังสือฉบับนี้ออกให้เพื่อ{purpose}
+          </p>
+
           {student.national_id && (
             <p>
               เลขประจำตัวประชาชน:{" "}
@@ -86,6 +127,36 @@ export function Pp7Print({ student, school, issueDate, academicYear, semester }:
               วันเดือนปีเกิด:{" "}
               <span className="font-semibold">{formatThaiDate(student.birth_date)}</span>
             </p>
+          )}
+
+          {/* Optional data table */}
+          {hasExtraData && (
+            <table className="w-full text-sm border border-border">
+              <tbody>
+                {showGpa && gpa != null && (
+                  <tr className="border-b border-border">
+                    <td className="px-3 py-1 font-medium bg-muted/40 w-1/2">ผลการเรียนเฉลี่ยสะสม (GPA)</td>
+                    <td className="px-3 py-1">{gpa.toFixed(2)}</td>
+                  </tr>
+                )}
+                {showAttendance && attendanceRate != null && (
+                  <tr className="border-b border-border">
+                    <td className="px-3 py-1 font-medium bg-muted/40">อัตราการเข้าเรียน</td>
+                    <td className="px-3 py-1">{attendanceRate.toFixed(1)}%</td>
+                  </tr>
+                )}
+                {showBehavior && behaviorScore != null && (
+                  <tr>
+                    <td className="px-3 py-1 font-medium bg-muted/40">คะแนนความประพฤติ</td>
+                    <td className="px-3 py-1">{behaviorScore}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+
+          {certText && (
+            <p className="indent-8 whitespace-pre-wrap">{certText}</p>
           )}
 
           <p className="indent-8">

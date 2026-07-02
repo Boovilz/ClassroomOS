@@ -5,7 +5,7 @@ import { StudentsTable } from "@/components/students/students-table";
 import { StudentFormDialog } from "@/components/students/student-form-dialog";
 import { StudentsFilterBar } from "@/components/students/students-filter-bar";
 import { Button } from "@/components/ui/button";
-import { UploadCloud } from "lucide-react";
+import { UploadCloud, BarChart2, CreditCard } from "lucide-react";
 
 interface StudentsPageProps {
   searchParams: Promise<{
@@ -17,6 +17,7 @@ interface StudentsPageProps {
     sort?: string;
     direction?: string;
     includeDeleted?: string;
+    year?: string;
   }>;
 }
 
@@ -34,6 +35,7 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
       sort: (params.sort as "name" | "student_code" | "gpa" | "attendance") ?? "student_code",
       direction: params.direction === "desc" ? "desc" : "asc",
       includeDeleted: params.includeDeleted === "1",
+      yearFilter: params.year ? parseInt(params.year, 10) : undefined,
     }),
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) return { data: null };
@@ -57,6 +59,18 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" asChild>
+            <Link href="/students/stats">
+              <BarChart2 className="h-4 w-4" />
+              สถิตินักเรียน
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2" asChild>
+            <Link href="/students/cards">
+              <CreditCard className="h-4 w-4" />
+              บัตรนักเรียน
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" className="gap-2" asChild>
             <Link href="/students/import">
               <UploadCloud className="h-4 w-4" />

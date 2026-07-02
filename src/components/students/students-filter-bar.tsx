@@ -91,8 +91,15 @@ export function StudentsFilterBar({ grades, classrooms }: { grades: string[]; cl
   const gradeOptions: FilterOption[] = grades.map((g) => ({ value: g, label: g }));
   const classroomOptions: FilterOption[] = classrooms.map((c) => ({ value: c, label: c }));
 
+  const currentBeYear = new Date().getFullYear() + 543;
+  const yearOptions: FilterOption[] = Array.from({ length: 6 }, (_, i) => {
+    const y = currentBeYear - i;
+    return { value: String(y), label: String(y) };
+  });
+
   return (
     <div className="glass-card flex flex-wrap items-center gap-4 rounded-2xl p-4">
+      <FilterGroup label="ปีการศึกษา" paramKey="year" options={yearOptions} />
       <FilterGroup label="ชั้น" paramKey="grade" options={gradeOptions} />
       <FilterGroup label="ห้อง" paramKey="classroom" options={classroomOptions} />
       <FilterGroup label="สถานะ" paramKey="status" options={statusOptions} />

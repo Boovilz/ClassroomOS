@@ -12,7 +12,8 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { MoreHorizontal, Eye, Pencil, Archive, ArchiveRestore, Trash2, Undo2, QrCode, ArrowUpCircle, FolderInput, Link2 } from "lucide-react";
+import { MoreHorizontal, Eye, Pencil, Archive, ArchiveRestore, Trash2, Undo2, QrCode, ArrowUpCircle, FolderInput, Link2, FileSpreadsheet, Printer } from "lucide-react";
+import * as XLSX from "xlsx";
 
 import { createClient } from "@/lib/supabase/client";
 import { logAudit } from "@/lib/audit";
@@ -66,6 +67,25 @@ const GRADE_PROGRESSION: Record<string, string> = {
 };
 
 export type StudentRow = StudentListRow;
+
+function exportToExcel(rows: StudentRow[], filename = "รายชื่อนักเรียน.xlsx") {
+  const data = rows.map((r, i) => ({
+    "ลำดับ": i + 1,
+    "รหัสนักเรียน": r.student_code,
+    "ชื่อ-สกุล": r.full_name,
+    "ชั้น": r.grade ?? "",
+    "ห้อง": r.classroom ?? "",
+    "เพศ": r.gender === "male" ? "ชาย" : r.gender === "female" ? "หญิง" : "อื่นๆ",
+    "วันเกิด": r.birth_date ?? "",
+    "อัตราเข้าเรียน": r.attendanceRate != null ? r.attendanceRate + "%" : "",
+    "GPA": r.gpa ?? "",
+    "สถานะ": r.is_archived ? "ไม่ใช้งาน" : "ปกติ",
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "นักเรียน");
+  XLSX.writeFile(wb, filename);
+}
 
 const riskLabel: Record<string, string> = { low: "ต่ำ", medium: "ปานกลาง", high: "สูง" };
 const riskVariant: Record<string, "success" | "secondary" | "destructive"> = {
@@ -533,6 +553,24 @@ export function StudentsTable({ data, schoolId }: { data: StudentRow[]; schoolId
             rows={exportRows}
             label="ส่งออก CSV"
           />
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => exportToExcel(table.getFilteredRowModel().rows.map((r) => r.original))}
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            ดาวน์โหลด Excel
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => window.print()}
+          >
+            <Printer className="h-4 w-4" />
+            พิมพ์รายชื่อ
+          </Button>
           {schoolId && <StudentsCsvImport schoolId={schoolId} />}
         </div>
       </div>
@@ -686,6 +724,53 @@ export function StudentsTable({ data, schoolId }: { data: StudentRow[]; schoolId
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Print-only roster — hidden on screen, visible when window.print() is called */}
+      <div id="print-roster" style={{ display: "none" }}>
+        <div style={{ fontFamily: "sans-serif", padding: "24px" }}>
+          <h2 style={{ textAlign: "center", marginBottom: "4px" }}>
+            รายชื่อนักเรียน
+            {(() => {
+              const filtered = table.getFilteredRowModel().rows.map((r) => r.original);
+              const grade = filtered[0]?.grade;
+              const classroom = filtered[0]?.classroom;
+              return grade || classroom ? ` ชั้น ${grade ?? ""} ห้อง ${classroom ?? ""}` : "";
+            })()}
+          </h2>
+          <p style={{ textAlign: "center", marginBottom: "16px", fontSize: "13px", color: "#555" }}>
+            วันที่พิมพ์: {new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })}
+          </p>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+            <thead>
+              <tr style={{ background: "#f0f0f0" }}>
+                <th style={{ border: "1px solid #ccc", padding: "6px 8px", textAlign: "center" }}>ลำดับ</th>
+                <th style={{ border: "1px solid #ccc", padding: "6px 8px", textAlign: "left" }}>รหัส</th>
+                <th style={{ border: "1px solid #ccc", padding: "6px 8px", textAlign: "left" }}>ชื่อ-สกุล</th>
+                <th style={{ border: "1px solid #ccc", padding: "6px 8px", textAlign: "center" }}>เพศ</th>
+                <th style={{ border: "1px solid #ccc", padding: "6px 8px", textAlign: "center" }}>เบอร์โทร</th>
+              </tr>
+            </thead>
+            <tbody>
+              {table.getFilteredRowModel().rows.map((row, i) => {
+                const s = row.original;
+                return (
+                  <tr key={s.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                    <td style={{ border: "1px solid #ccc", padding: "5px 8px", textAlign: "center" }}>{i + 1}</td>
+                    <td style={{ border: "1px solid #ccc", padding: "5px 8px" }}>{s.student_code}</td>
+                    <td style={{ border: "1px solid #ccc", padding: "5px 8px" }}>{s.full_name}</td>
+                    <td style={{ border: "1px solid #ccc", padding: "5px 8px", textAlign: "center" }}>
+                      {s.gender === "male" ? "ชาย" : s.gender === "female" ? "หญิง" : "อื่นๆ"}
+                    </td>
+                    <td style={{ border: "1px solid #ccc", padding: "5px 8px", textAlign: "center" }}>
+                      -
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
