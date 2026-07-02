@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Printer } from "lucide-react";
+import { SupervisionPrintClient } from "./supervision-print-client";
 
 const statusLabel: Record<string, string> = {
   draft: "ร่าง",
@@ -11,13 +12,61 @@ const statusLabel: Record<string, string> = {
   acknowledged: "รับทราบแล้ว",
 };
 
-const scoreLabels: { key: string; label: string }[] = [
-  { key: "lesson_plan_score", label: "แผนการสอน" },
-  { key: "teaching_method_score", label: "วิธีการสอน" },
-  { key: "media_score", label: "สื่อการสอน" },
-  { key: "assessment_score", label: "การวัดประเมินผล" },
-  { key: "classroom_management_score", label: "การบริหารจัดการชั้นเรียน" },
+// 16-item rubric matching the PDF reference
+const SUPERVISION_CRITERIA = [
+  {
+    category: "1. การจัดบรรยากาศและบริหารชั้นเรียน",
+    items: [
+      { no: 1, label: "1.1 การตรงต่อเวลา" },
+      { no: 2, label: "1.2 การควบคุมความเป็นระเบียบในชั้นเรียน" },
+      { no: 3, label: "1.3 การให้คำปรึกษาแก่ผู้เรียนในชั้นเรียน" },
+      { no: 4, label: "1.4 การรักษาความสะอาดในชั้นเรียน" },
+    ],
+  },
+  {
+    category: "2. บุคลิกภาพ",
+    items: [
+      { no: 5, label: "2.1 การแต่งกายสุภาพ เหมาะสม" },
+      { no: 6, label: "2.2 การใช้น้ำเสียง มีความชัดเจน" },
+      { no: 7, label: "2.3 ความเชื่อมั่นใจตนเอง" },
+      { no: 8, label: "2.4 การใช้ภาษาเพื่อสื่อสารและสร้างบรรยากาศการเรียนรู้" },
+    ],
+  },
+  {
+    category: "3. การดำเนินการสอน",
+    items: [
+      { no: 9, label: "3.1 วางแผนการจัดการเรียนรู้สอดคล้องกับมาตรฐานและตัวชี้วัด" },
+      { no: 10, label: "3.2 เนื้อหาสอดคล้องกับจุดประสงค์การเรียนรู้" },
+      { no: 11, label: "3.3 การสอดแทรกความรู้ทั่วไปและคุณธรรม จริยธรรม" },
+      { no: 12, label: "3.4 การใช้วิธีการสอนที่เหมาะสมน่าสนใจ" },
+      { no: 13, label: "3.5 การเปิดโอกาสให้ผู้เรียนซักถามหรือแสดงความคิดเห็น" },
+      { no: 14, label: "3.6 มีการตั้งคำถามที่กระตุ้นผู้เรียนใช้กระบวนการคิด" },
+      { no: 15, label: "3.7 การสรุปเนื้อหาได้ตรงตามจุดประสงค์" },
+    ],
+  },
+  {
+    category: "4. การใช้สื่อและนวัตกรรมการเรียนรู้",
+    items: [
+      { no: 16, label: "4.1 ใช้สื่อการสอนที่สอดคล้องตามตัวชี้วัด" },
+    ],
+  },
 ];
+
+const QUALITY_LABEL: Record<string, string> = {
+  excellent: "ดีมาก",
+  good: "ดี",
+  fair: "พอใช้",
+  poor: "ปรับปรุง",
+  fail: "ไม่ผ่านเกณฑ์",
+};
+
+function qualityFromScore(score: number): string {
+  if (score >= 73) return "ดีมาก";
+  if (score >= 65) return "ดี";
+  if (score >= 57) return "พอใช้";
+  if (score >= 48) return "ปรับปรุง";
+  return "ไม่ผ่านเกณฑ์";
+}
 
 type RecordRow = {
   id: string;
@@ -64,11 +113,20 @@ export default async function SupervisionDetailPage({
   if (error || !data) notFound();
 
   const record = data;
-  const supervisedDate = new Date(record.supervised_at).toLocaleDateString("th-TH", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+
+  const supervisedDate = record.supervised_at
+    ? new Date(record.supervised_at).toLocaleDateString("th-TH", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "-";
+
+  const getItemScore = (_itemNo: number): number | null => null;
+
+  const totalScore = record.total_score ?? 0;
+  const qualityLabel = qualityFromScore(totalScore);
+  const round = 1;
 
   return (
     <div className="space-y-6">
@@ -80,141 +138,137 @@ export default async function SupervisionDetailPage({
             กลับรายการ
           </Link>
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => window.print()}
-        >
-          <Printer className="h-4 w-4" />
-          พิมพ์แบบบันทึก
-        </Button>
-      </div>
-
-      {/* Printable record */}
-      <div className="mx-auto max-w-3xl rounded-xl border bg-white p-8 shadow-sm print:border-none print:shadow-none">
-        {/* Header */}
-        <div className="mb-6 text-center">
-          <h1 className="text-xl font-bold">แบบบันทึกการนิเทศการสอน</h1>
-          <p className="text-sm text-muted-foreground">Teaching Supervision Record</p>
-        </div>
-
-        {/* Status badge */}
-        <div className="mb-6 flex justify-end print:hidden">
+        <div className="flex items-center gap-2">
           <Badge>{statusLabel[record.status] ?? record.status}</Badge>
+          <SupervisionPrintClient />
+        </div>
+      </div>
+
+      {/* Printable form — exact PDF layout */}
+      <div className="mx-auto max-w-4xl rounded-xl border bg-white p-8 shadow-sm print:border-none print:rounded-none print:shadow-none print:p-6">
+        {/* Header */}
+        <div className="mb-4 text-center">
+          <p className="text-sm font-medium">แบบบันทึกการนิเทศการสอนประจำภาคเรียน</p>
+          <p className="text-sm">ฝ่ายบริหารงานวิชาการสถานศึกษา</p>
+          <div className="mt-1 flex items-center justify-center gap-4 text-sm">
+            <span>การนิเทศ ครั้งที่ {round}</span>
+            <span>
+              ปีการศึกษา{" "}
+              {record.supervised_at
+                ? new Date(record.supervised_at).getFullYear() + 543
+                : new Date().getFullYear() + 543}
+            </span>
+          </div>
         </div>
 
-        {/* Info grid */}
-        <div className="mb-6 grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
-          <InfoRow label="วันที่นิเทศ" value={supervisedDate} />
-          <InfoRow label="ครูผู้สอน" value={record.teacher?.full_name ?? "-"} />
-          <InfoRow label="ผู้นิเทศ" value={record.supervisor?.full_name ?? "-"} />
-          <InfoRow label="วิชาที่สอน" value={record.subject ?? "-"} />
-          <InfoRow label="ระดับชั้น/ห้อง" value={record.classroom ?? "-"} />
-          <InfoRow label="หัวข้อที่สอน" value={record.topic ?? "-"} />
-          <InfoRow
-            label="จำนวนนักเรียน"
-            value={record.student_count != null ? `${record.student_count} คน` : "-"}
-          />
+        {/* Info fields */}
+        <div className="mb-3 grid grid-cols-2 gap-x-8 gap-y-1 text-sm border p-3">
+          <div className="flex gap-2">
+            <span className="font-medium">ชื่อผู้สอน:</span>
+            <span>{record.teacher?.full_name ?? "-"}</span>
+          </div>
+          <div className="flex gap-2">
+            <span className="font-medium">กลุ่มสาระฯ:</span>
+            <span>-</span>
+          </div>
+          <div className="flex gap-2">
+            <span className="font-medium">รายวิชาที่สอน:</span>
+            <span>{record.subject ?? "-"}</span>
+          </div>
+          <div className="flex gap-2">
+            <span className="font-medium">วันที่รับการนิเทศ:</span>
+            <span>{supervisedDate}</span>
+          </div>
         </div>
 
-        {/* Scores table */}
-        <div className="mb-6">
-          <h2 className="mb-2 text-sm font-semibold">ผลการประเมิน</h2>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th className="py-1.5 text-left font-medium">รายการ</th>
-                <th className="py-1.5 text-center font-medium">คะแนน (1–5)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {scoreLabels.map(({ key, label }) => (
-                <tr key={key} className="border-b border-dashed">
-                  <td className="py-1.5">{label}</td>
-                  <td className="py-1.5 text-center">
-                    {(record as Record<string, unknown>)[key] != null
-                      ? String((record as Record<string, unknown>)[key])
-                      : "-"}
-                  </td>
-                </tr>
+        {/* Rubric table */}
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border bg-gray-50">
+              <th className="border px-2 py-1 w-8 text-center">ที่</th>
+              <th className="border px-2 py-1 text-left">รายการประเมินพฤติกรรมการจัดการเรียนรู้</th>
+              <th className="border px-2 py-1 text-center" colSpan={5}>ระดับคะแนน</th>
+            </tr>
+            <tr className="border bg-gray-50">
+              <th className="border px-2 py-1" />
+              <th className="border px-2 py-1" />
+              {[5, 4, 3, 2, 1].map((n) => (
+                <th key={n} className="border px-2 py-1 w-10 text-center font-normal">{n}</th>
               ))}
-              <tr className="font-semibold">
-                <td className="py-1.5">คะแนนรวม</td>
-                <td className="py-1.5 text-center">
-                  {record.total_score ?? "-"}
-                  <span className="font-normal text-muted-foreground"> / 25</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+            </tr>
+          </thead>
+          <tbody>
+            {SUPERVISION_CRITERIA.map((cat) => (
+              <>
+                <tr key={cat.category} className="bg-gray-50">
+                  <td className="border px-2 py-1" />
+                  <td className="border px-2 py-1 font-medium" colSpan={6}>{cat.category}</td>
+                </tr>
+                {cat.items.map((item) => {
+                  const score = getItemScore(item.no);
+                  return (
+                    <tr key={item.no} className="border">
+                      <td className="border px-2 py-1 text-center">{item.no}</td>
+                      <td className="border px-2 py-1">{item.label}</td>
+                      {[5, 4, 3, 2, 1].map((level) => (
+                        <td key={level} className="border px-2 py-1 text-center">
+                          {score === level ? "✓" : ""}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </>
+            ))}
+            <tr className="font-semibold bg-gray-50">
+              <td className="border px-2 py-1 text-right font-semibold" colSpan={2}>
+                รวมคะแนนทั้งหมด :
+              </td>
+              <td className="border px-2 py-1 text-center" colSpan={5}>
+                {totalScore} / 80 คะแนน
+              </td>
+            </tr>
+            <tr>
+              <td className="border px-2 py-1 text-right font-medium" colSpan={2}>
+                สรุปผลการประเมินคุณภาพ :
+              </td>
+              <td className="border px-2 py-1 text-center font-semibold" colSpan={5}>
+                {qualityLabel}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Comments */}
+        <div className="mt-4 space-y-3 text-sm">
+          <div>
+            <p className="font-medium">● จุดเด่น / ข้อดี:</p>
+            <p className="min-h-[36px] border-b border-dashed pl-4 text-gray-700">{record.strengths ?? "-"}</p>
+          </div>
+          <div>
+            <p className="font-medium">● จุดที่ควรพัฒนา / ปรับปรุง:</p>
+            <p className="min-h-[36px] border-b border-dashed pl-4 text-gray-700">{record.improvements ?? "-"}</p>
+          </div>
+          <div>
+            <p className="font-medium">● ข้อเสนอแนะเพื่อการพัฒนางาน:</p>
+            <p className="min-h-[36px] border-b border-dashed pl-4 text-gray-700">{record.suggestions ?? "-"}</p>
+          </div>
         </div>
 
-        {/* Text sections */}
-        <div className="mb-6 space-y-4 text-sm">
-          <TextSection label="จุดเด่น / ข้อดี" value={record.strengths} />
-          <TextSection label="จุดที่ควรปรับปรุง" value={record.improvements} />
-          <TextSection label="ข้อเสนอแนะ" value={record.suggestions} />
-        </div>
-
-        {/* Follow-up */}
-        {record.follow_up_date && (
-          <div className="mb-6 text-sm">
-            <span className="font-medium">วันนิเทศติดตาม: </span>
-            {new Date(record.follow_up_date).toLocaleDateString("th-TH", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </div>
-        )}
-
-        {/* Signature lines */}
-        <div className="mt-10 grid grid-cols-2 gap-8 text-center text-sm">
+        {/* Signatures */}
+        <div className="mt-8 grid grid-cols-2 gap-12 text-center text-sm">
           <div>
-            <div className="mb-10 border-b border-dashed" />
-            <p>ลงชื่อครูผู้สอน</p>
-            <p className="text-muted-foreground">({record.teacher?.full_name ?? "....................."})</p>
+            <div className="mb-8 border-b border-dashed" />
+            <p>( {record.teacher?.full_name ?? "................................"} )</p>
+            <p className="text-gray-500">ผู้รับการนิเทศ</p>
           </div>
           <div>
-            <div className="mb-10 border-b border-dashed" />
-            <p>ลงชื่อผู้นิเทศ</p>
-            <p className="text-muted-foreground">({record.supervisor?.full_name ?? "....................."})</p>
+            <div className="mb-8 border-b border-dashed" />
+            <p>( {record.supervisor?.full_name ?? "................................"} )</p>
+            <p className="text-gray-500">ผู้นิเทศ</p>
           </div>
         </div>
       </div>
-
-      {/* Print button at bottom */}
-      <div className="flex justify-center print:hidden">
-        <Button
-          variant="default"
-          className="gap-2"
-          onClick={() => window.print()}
-        >
-          <Printer className="h-4 w-4" />
-          พิมพ์แบบบันทึก
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex gap-2">
-      <span className="min-w-[120px] font-medium text-muted-foreground">{label}:</span>
-      <span>{value}</span>
-    </div>
-  );
-}
-
-function TextSection({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div>
-      <p className="mb-1 font-medium">{label}</p>
-      <p className="min-h-[48px] rounded border border-dashed p-2 text-muted-foreground">
-        {value ?? "-"}
-      </p>
     </div>
   );
 }

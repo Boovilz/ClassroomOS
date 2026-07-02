@@ -4,6 +4,18 @@ import { QrCardsGrid } from "./qr-cards-grid";
 
 export default async function AttendanceQrPage() {
   const supabase = await createClient();
+
+  const { data: auth } = await supabase.auth.getUser();
+  let schoolName = "";
+  if (auth?.user) {
+    const { data: profile } = await supabase.from("users").select("school_id").eq("id", auth.user.id).single();
+    if (profile?.school_id) {
+      const { data: school } = await supabase.from("schools").select("name").eq("id", profile.school_id).single();
+      schoolName = school?.name ?? "";
+    }
+  }
+  const academicYear = String(new Date().getFullYear() + 543);
+
   const { data: students } = await supabase
     .from("students")
     .select("id, full_name, student_code, classroom, avatar_url")
@@ -30,7 +42,7 @@ export default async function AttendanceQrPage() {
         </CardHeader>
       </Card>
 
-      <QrCardsGrid students={students ?? []} />
+      <QrCardsGrid students={students ?? []} schoolName={schoolName} academicYear={academicYear} />
     </div>
   );
 }

@@ -10,26 +10,20 @@ export interface QrCardData {
   classroom: string | null;
   avatarUrl: string | null;
   qrValue: string;
+  schoolName?: string;
+  academicYear?: string;
 }
 
-/**
- * A single printable QR identification card: photo + name + student code +
- * classroom + a freshly rendered QR image. Designed to sit in a print-grid
- * (see src/app/(dashboard)/attendance/qr/page.tsx) — `print:` utility
- * classes keep spacing/borders sane when sent to a printer.
- */
 export function QrCard({ data }: { data: QrCardData }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [dataUrl, setDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    QRCode.toDataURL(data.qrValue, { width: 220, margin: 1 }).then((url) => {
+    QRCode.toDataURL(data.qrValue, { width: 200, margin: 1 }).then((url) => {
       if (!cancelled) setDataUrl(url);
     });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [data.qrValue]);
 
   function handleDownloadPng() {
@@ -41,31 +35,40 @@ export function QrCard({ data }: { data: QrCardData }) {
   }
 
   return (
-    <div className="glass-card flex flex-col items-center gap-2 rounded-2xl border border-border/60 p-4 text-center print:break-inside-avoid print:border-black/30">
+    <div className="flex flex-col items-center rounded-xl border-2 border-gray-300 bg-white p-3 text-center print:break-inside-avoid" style={{ width: 200 }}>
       <canvas ref={canvasRef} className="hidden" />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={data.avatarUrl ?? "/avatar-placeholder.png"}
-        alt={data.fullName}
-        className="h-16 w-16 rounded-full border border-border/60 object-cover"
-        onError={(e) => {
-          (e.target as HTMLImageElement).style.visibility = "hidden";
-        }}
-      />
-      <p className="text-sm font-semibold">{data.fullName}</p>
-      <p className="text-xs text-muted-foreground">
-        {data.studentCode} {data.classroom ? `· ${data.classroom}` : ""}
-      </p>
+
+      {/* Student icon */}
+      <div className="mb-1 text-3xl">👤</div>
+
+      {/* Name */}
+      <p className="text-[11px] font-semibold leading-tight mb-0.5">{data.fullName}</p>
+      <p className="text-[10px] text-gray-500 mb-2">{data.studentCode}</p>
+
+      {/* QR Code */}
       {dataUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={dataUrl} alt={`QR ${data.studentCode}`} className="h-40 w-40" />
+        <img src={dataUrl} alt={`QR ${data.studentCode}`} className="h-32 w-32 mb-1" />
       ) : (
-        <div className="h-40 w-40 animate-pulse rounded bg-muted" />
+        <div className="h-32 w-32 animate-pulse rounded bg-gray-100 mb-1" />
       )}
+
+      <div className="text-[9px] font-mono text-gray-500 mb-1 tracking-widest">BARCODE</div>
+
+      {/* Barcode placeholder — just text representation */}
+      <div className="text-[9px] font-mono border border-gray-300 px-2 py-0.5 tracking-widest mb-2">
+        {data.studentCode}
+      </div>
+
+      {/* School + Year */}
+      <p className="text-[9px] text-gray-500 leading-tight">
+        {data.schoolName ? `${data.schoolName} · ` : ""}{data.academicYear ?? (new Date().getFullYear() + 543)}
+      </p>
+
       <button
         type="button"
         onClick={handleDownloadPng}
-        className="text-xs text-primary underline-offset-2 hover:underline print:hidden"
+        className="mt-1 text-[9px] text-blue-500 underline-offset-2 hover:underline print:hidden"
       >
         ดาวน์โหลด PNG
       </button>

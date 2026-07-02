@@ -17,7 +17,7 @@ interface StudentLite {
  * Fetches a fresh signed QR token per student (via /api/attendance/checkin)
  * and renders a printable grid of QrCard components.
  */
-export function QrCardsGrid({ students }: { students: StudentLite[] }) {
+export function QrCardsGrid({ students, schoolName, academicYear }: { students: StudentLite[]; schoolName?: string; academicYear?: string }) {
   const [cards, setCards] = useState<QrCardData[] | null>(null);
 
   useEffect(() => {
@@ -40,6 +40,8 @@ export function QrCardsGrid({ students }: { students: StudentLite[] }) {
               classroom: s.classroom,
               avatarUrl: s.avatar_url,
               qrValue: data.success ? data.token : s.student_code,
+              schoolName,
+              academicYear,
             };
           } catch {
             return {
@@ -49,6 +51,8 @@ export function QrCardsGrid({ students }: { students: StudentLite[] }) {
               classroom: s.classroom,
               avatarUrl: s.avatar_url,
               qrValue: s.student_code,
+              schoolName,
+              academicYear,
             };
           }
         })
