@@ -137,7 +137,6 @@ export async function createClub(data: {
 }): Promise<Club> {
   const supabase = await createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: club, error } = await (supabase as any)
     .from("clubs")
     .insert({
@@ -164,7 +163,6 @@ export async function createClub(data: {
 export async function addClubMember(clubId: string, studentId: string): Promise<ClubMembership> {
   const supabase = await createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("club_memberships")
     .insert({
@@ -187,7 +185,6 @@ export async function addClubMember(clubId: string, studentId: string): Promise<
 export async function removeClubMember(clubId: string, studentId: string): Promise<void> {
   const supabase = await createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from("club_memberships")
     .update({ status: "dropped" })
@@ -204,7 +201,6 @@ export async function removeClubMember(clubId: string, studentId: string): Promi
 export async function updateClub(clubId: string, data: Partial<Club>): Promise<Club> {
   const supabase = await createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: club, error } = await (supabase as any)
     .from("clubs")
     .update(data)

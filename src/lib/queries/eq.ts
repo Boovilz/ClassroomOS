@@ -81,7 +81,6 @@ export async function saveEqAssessment(data: {
 
   const eqLevel = computeEqLevel(total)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: inserted, error } = await (supabase as any)
     .from("eq_assessments")
     .insert({

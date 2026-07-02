@@ -129,7 +129,7 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ clu
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    ยังไม่มีสมาชิก กดปุ่ม "เพิ่มสมาชิก" เพื่อเริ่มต้น
+                    ยังไม่มีสมาชิก กดปุ่ม &ldquo;เพิ่มสมาชิก&rdquo; เพื่อเริ่มต้น
                   </TableCell>
                 </TableRow>
               )}

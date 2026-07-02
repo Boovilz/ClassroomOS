@@ -34,7 +34,6 @@ export async function listSupervisionRecords(
   limit?: number
 ): Promise<SupervisionWithNames[]> {
   const supabase = await createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase as any)
     .from("supervision_records")
     .select(
@@ -66,7 +65,6 @@ export async function getSupervisionRecord(
   id: string
 ): Promise<SupervisionWithNames | null> {
   const supabase = await createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("supervision_records")
     .select(
@@ -102,7 +100,6 @@ export async function createSupervisionRecord(
     (data.assessment_score ?? 0) +
     (data.classroom_management_score ?? 0);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: created, error } = await (supabase as any)
     .from("supervision_records")
     .insert({ ...data, total_score })
@@ -144,7 +141,6 @@ export async function updateSupervisionRecord(
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: updated, error } = await (supabase as any)
     .from("supervision_records")
     .update(patch)

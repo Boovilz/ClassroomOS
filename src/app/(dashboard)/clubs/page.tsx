@@ -31,7 +31,7 @@ export default async function ClubsPage() {
       {clubs.length === 0 ? (
         <Card className="glass-card">
           <CardContent className="flex h-40 items-center justify-center">
-            <p className="text-muted-foreground">ยังไม่มีชุมนุม กดปุ่ม "สร้างชุมนุมใหม่" เพื่อเริ่มต้น</p>
+            <p className="text-muted-foreground">ยังไม่มีชุมนุม กดปุ่ม &ldquo;สร้างชุมนุมใหม่&rdquo; เพื่อเริ่มต้น</p>
           </CardContent>
         </Card>
       ) : (
