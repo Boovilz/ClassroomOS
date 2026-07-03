@@ -11,7 +11,7 @@ export default async function Pp7Page({ params }: { params: Promise<{ id: string
 
   const { data: studentRow } = await supabase
     .from("students")
-    .select("school_id, full_name, student_code, grade, classroom, birth_date, citizen_id")
+    .select("school_id, full_name, student_code, grade, classroom, birth_date, citizen_id, gender, nationality, religion")
     .eq("id", id)
     .single();
 
@@ -19,10 +19,18 @@ export default async function Pp7Page({ params }: { params: Promise<{ id: string
     return <p className="p-8 text-center text-muted-foreground">ไม่พบข้อมูล</p>;
   }
 
-  const [summary, { data: school }] = await Promise.all([
+  const [summary, { data: school }, { data: parents }] = await Promise.all([
     getStudentAcademicSummary(id),
     supabase.from("schools").select("name, address, phone").eq("id", studentRow.school_id).single(),
+    supabase
+      .from("parents")
+      .select("full_name, relationship")
+      .eq("student_id", id)
+      .in("relationship", ["father", "mother"]),
   ]);
+
+  const fatherRow = parents?.find((p) => p.relationship === "father");
+  const motherRow = parents?.find((p) => p.relationship === "mother");
 
   if (!summary) {
     return <p className="p-8 text-center text-muted-foreground">ไม่พบข้อมูล</p>;
@@ -43,6 +51,11 @@ export default async function Pp7Page({ params }: { params: Promise<{ id: string
           classroom: studentRow.classroom ?? summary.classroom ?? "-",
           birth_date: studentRow.birth_date,
           national_id: studentRow.citizen_id,
+          gender: studentRow.gender,
+          nationality: studentRow.nationality,
+          religion: studentRow.religion,
+          father_name: fatherRow?.full_name ?? null,
+          mother_name: motherRow?.full_name ?? null,
         }}
         school={{
           name: school?.name ?? "-",

@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Printer } from "lucide-react";
 
 export interface PassbookTransactionRow {
@@ -12,6 +11,7 @@ export interface PassbookTransactionRow {
   amount: number;
   balance_after: number | null;
   description: string | null;
+  recorder_name?: string | null;
 }
 
 export function PassbookView({
@@ -21,6 +21,8 @@ export function PassbookView({
   classroom,
   balance,
   transactions,
+  schoolName,
+  academicYear,
 }: {
   studentName: string;
   studentCode: string;
@@ -28,7 +30,15 @@ export function PassbookView({
   classroom: string | null;
   balance: number;
   transactions: PassbookTransactionRow[];
+  schoolName?: string;
+  academicYear?: string;
 }) {
+  const printDate = new Date().toLocaleDateString("th-TH", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end print:hidden">
@@ -38,76 +48,108 @@ export function PassbookView({
         </Button>
       </div>
 
-      <div id="passbook-print-area" className="rounded-2xl border border-border/60 p-6 print:border-black/40">
-        <div className="mb-4 flex items-center justify-between border-b border-border/60 pb-3">
-          <div>
-            <p className="text-lg font-bold">สมุดบัญชีออมทรัพย์นักเรียน</p>
-            <p className="text-xs text-muted-foreground">Teacher Classroom OS</p>
-          </div>
-          <div className="text-right text-sm">
-            <p className="font-semibold">{studentName}</p>
-            <p className="text-muted-foreground">
-              {studentCode} {classroom ? `· ${classroom}` : ""}
-            </p>
-            <p className="text-muted-foreground">เลขที่บัญชี: {accountNumber ?? "-"}</p>
-          </div>
-        </div>
+      <div id="passbook-print-area" className="space-y-0">
+        {/* Cover page */}
+        <div className="mx-auto max-w-sm rounded-2xl border-2 border-border bg-card p-8 text-center print:rounded-none print:border-black print:max-w-none print:p-10">
+          <p className="text-base font-bold">สมุดคู่ฝาก</p>
+          <p className="text-sm">ธนาคารชั้นเรียน</p>
+          {schoolName && <p className="mt-1 text-sm">{schoolName}</p>}
 
-        <div className="mb-4 flex items-center justify-between rounded-xl bg-primary/10 p-4">
-          <span className="text-sm text-muted-foreground">ยอดคงเหลือปัจจุบัน</span>
-          <span className="text-2xl font-bold text-primary">{balance.toLocaleString()} บาท</span>
-        </div>
+          <div className="my-8 text-5xl">🏦</div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>วันที่</TableHead>
-              <TableHead>เลขที่รายการ</TableHead>
-              <TableHead>ประเภท</TableHead>
-              <TableHead className="text-right">จำนวน</TableHead>
-              <TableHead className="text-right">ยอดคงเหลือ</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {transactions.length > 0 ? (
-              transactions.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell>{new Date(t.occurred_at).toLocaleDateString("th-TH")}</TableCell>
-                  <TableCell className="text-xs">{t.transaction_no ?? "-"}</TableCell>
-                  <TableCell>{t.txn_subtype === "deposit" ? "ฝากเงิน" : t.txn_subtype === "withdrawal" ? "ถอนเงิน" : t.description ?? "-"}</TableCell>
-                  <TableCell className="text-right font-medium">
-                    {t.txn_subtype === "deposit" ? "+" : "-"}
-                    {t.amount.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right">{t.balance_after?.toLocaleString() ?? "-"}</TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">
-                  ยังไม่มีรายการเคลื่อนไหว
-                </TableCell>
-              </TableRow>
+          <div className="space-y-2 text-sm text-left border rounded-xl p-4">
+            <div className="flex gap-2">
+              <span className="w-28 font-medium shrink-0">รหัสนักเรียน</span>
+              <span>{studentCode}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="w-28 font-medium shrink-0">ชื่อ-สกุล</span>
+              <span>{studentName}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="w-28 font-medium shrink-0">ชั้น/ห้อง</span>
+              <span>{classroom ?? "-"}</span>
+            </div>
+            {academicYear && (
+              <div className="flex gap-2">
+                <span className="w-28 font-medium shrink-0">ปีการศึกษา</span>
+                <span>{academicYear}</span>
+              </div>
             )}
-          </TableBody>
-        </Table>
+            <div className="flex gap-2">
+              <span className="w-28 font-medium shrink-0">ยอดคงเหลือ</span>
+              <span className="font-bold text-primary">{balance.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="w-28 font-medium shrink-0">วันที่พิมพ์</span>
+              <span>{printDate}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Statement page */}
+        <div className="mx-auto mt-6 max-w-3xl rounded-2xl border border-border bg-card p-6 print:rounded-none print:border-black print:mt-0 print:max-w-none print:page-break-before-always">
+          <p className="mb-4 text-center font-bold">รายการเดินบัญชี — {studentName}</p>
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border bg-muted/40">
+                <th className="border px-2 py-1 text-center w-10">ลำดับ</th>
+                <th className="border px-2 py-1 text-center">วัน/เดือน/ปี เวลา</th>
+                <th className="border px-2 py-1 text-left">รายการ</th>
+                <th className="border px-2 py-1 text-right">จำนวนเงิน (฿)</th>
+                <th className="border px-2 py-1 text-right">ยอดคงเหลือ (฿)</th>
+                <th className="border px-2 py-1 text-center">ผู้บันทึก</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.length > 0 ? (
+                transactions.map((t, i) => (
+                  <tr key={t.id} className="border">
+                    <td className="border px-2 py-1 text-center">{i + 1}</td>
+                    <td className="border px-2 py-1 text-center">
+                      {new Date(t.occurred_at).toLocaleString("th-TH", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                    <td className="border px-2 py-1">
+                      {t.txn_subtype === "deposit" ? "ฝากเงิน" : t.txn_subtype === "withdrawal" ? "ถอนเงิน" : t.description ?? "-"}
+                      {t.transaction_no ? <span className="text-muted-foreground ml-1 text-xs">#{t.transaction_no}</span> : null}
+                    </td>
+                    <td className="border px-2 py-1 text-right">
+                      {t.txn_subtype === "withdrawal" ? "-" : ""}
+                      {t.amount.toLocaleString("th-TH", { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="border px-2 py-1 text-right">
+                      {t.balance_after?.toLocaleString("th-TH", { minimumFractionDigits: 2 }) ?? "-"}
+                    </td>
+                    <td className="border px-2 py-1 text-center text-xs">{t.recorder_name ?? ""}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="border px-4 py-6 text-center text-muted-foreground">
+                    ยังไม่มีประวัติการทำรายการ (ยอดเงิน {balance.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท)
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          {transactions.length > 0 && (
+            <p className="mt-2 text-center text-xs text-muted-foreground">--- สิ้นสุดรายการเดินบัญชี ---</p>
+          )}
+        </div>
       </div>
 
       <style jsx global>{`
         @media print {
-          body * {
-            visibility: hidden;
-          }
-          #passbook-print-area,
-          #passbook-print-area * {
-            visibility: visible;
-          }
-          #passbook-print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
+          body * { visibility: hidden; }
+          #passbook-print-area, #passbook-print-area * { visibility: visible; }
+          #passbook-print-area { position: absolute; left: 0; top: 0; width: 100%; }
+          .print\\:page-break-before-always { page-break-before: always; }
         }
       `}</style>
     </div>

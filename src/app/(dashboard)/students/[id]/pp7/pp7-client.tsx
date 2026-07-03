@@ -18,6 +18,11 @@ interface StudentData {
   classroom: string;
   birth_date?: string | null;
   national_id?: string | null;
+  gender?: string | null;
+  nationality?: string | null;
+  religion?: string | null;
+  father_name?: string | null;
+  mother_name?: string | null;
 }
 
 interface SchoolData {

@@ -34,6 +34,11 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ clu
 
   const schoolName = school?.name ?? "";
 
+  const { data: advisorUser } = club.teacher_id
+    ? await supabase.from("users").select("full_name").eq("id", club.teacher_id).single()
+    : { data: null };
+  const advisorName = advisorUser?.full_name ?? undefined;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -60,7 +65,7 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ clu
           {profile?.school_id && (
             <AddMemberDialog clubId={clubId} schoolId={profile.school_id} />
           )}
-          <ClubMemberListPrint club={club} members={members} schoolName={schoolName} />
+          <ClubMemberListPrint club={club} members={members} schoolName={schoolName} advisorName={advisorName} />
         </div>
       </div>
 
