@@ -44,15 +44,13 @@ export default async function SupervisionPage() {
     classroom: string | null;
     total_score: number | null;
     status: string;
-    teacher: { full_name: string } | null;
+    teacher_name: string | null;
   };
 
   const { data: records } = profile?.school_id
     ? await supabase
         .from("supervision_records")
-        .select(
-          "id, supervised_at, subject, classroom, total_score, status, teacher:teacher_id(full_name)"
-        )
+        .select("id, supervised_at, subject, classroom, total_score, status, teacher_name")
         .eq("school_id", profile.school_id)
         .order("supervised_at", { ascending: false })
         .returns<SupervisionRow[]>()
@@ -107,7 +105,7 @@ export default async function SupervisionPage() {
                         day: "numeric",
                       })}
                     </TableCell>
-                    <TableCell>{row.teacher?.full_name ?? "-"}</TableCell>
+                    <TableCell>{row.teacher_name ?? "-"}</TableCell>
                     <TableCell>{row.subject ?? "-"}</TableCell>
                     <TableCell>{row.classroom ?? "-"}</TableCell>
                     <TableCell className="text-center font-semibold">

@@ -81,12 +81,12 @@ type RecordRow = {
   assessment_score: number | null;
   classroom_management_score: number | null;
   total_score: number | null;
+  teacher_name: string | null;
   strengths: string | null;
   improvements: string | null;
   suggestions: string | null;
   follow_up_date: string | null;
   status: string;
-  teacher: { full_name: string } | null;
   supervisor: { full_name: string } | null;
 };
 
@@ -103,8 +103,8 @@ export default async function SupervisionDetailPage({
     .select(
       `id, supervised_at, subject, classroom, topic, student_count,
        lesson_plan_score, teaching_method_score, media_score, assessment_score, classroom_management_score,
-       total_score, strengths, improvements, suggestions, follow_up_date, status,
-       teacher:teacher_id(full_name), supervisor:supervisor_id(full_name)`
+       total_score, teacher_name, strengths, improvements, suggestions, follow_up_date, status,
+       supervisor:supervisor_id(full_name)`
     )
     .eq("id", id)
     .returns<RecordRow[]>()
@@ -165,7 +165,7 @@ export default async function SupervisionDetailPage({
         <div className="mb-3 grid grid-cols-2 gap-x-8 gap-y-1 text-sm border p-3">
           <div className="flex gap-2">
             <span className="font-medium">ชื่อผู้สอน:</span>
-            <span>{record.teacher?.full_name ?? "-"}</span>
+            <span>{record.teacher_name ?? "-"}</span>
           </div>
           <div className="flex gap-2">
             <span className="font-medium">กลุ่มสาระฯ:</span>
@@ -259,7 +259,7 @@ export default async function SupervisionDetailPage({
         <div className="mt-8 grid grid-cols-2 gap-12 text-center text-sm">
           <div>
             <div className="mb-8 border-b border-dashed" />
-            <p>( {record.teacher?.full_name ?? "................................"} )</p>
+            <p>( {record.teacher_name ?? "................................"} )</p>
             <p className="text-gray-500">ผู้รับการนิเทศ</p>
           </div>
           <div>

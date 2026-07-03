@@ -4,18 +4,19 @@ export interface SupervisionRecord {
   id: string;
   school_id: string;
   supervisor_id: string;
-  teacher_id: string;
+  teacher_id: string | null;
+  teacher_name: string | null;
   supervised_at: string;
-  subject: string;
-  classroom: string;
-  topic: string;
-  student_count: number;
-  lesson_plan_score: number;
-  teaching_method_score: number;
-  media_score: number;
-  assessment_score: number;
-  classroom_management_score: number;
-  total_score: number;
+  subject: string | null;
+  classroom: string | null;
+  topic: string | null;
+  student_count: number | null;
+  lesson_plan_score: number | null;
+  teaching_method_score: number | null;
+  media_score: number | null;
+  assessment_score: number | null;
+  classroom_management_score: number | null;
+  total_score: number | null;
   strengths: string | null;
   improvements: string | null;
   suggestions: string | null;
@@ -25,7 +26,6 @@ export interface SupervisionRecord {
 }
 
 export interface SupervisionWithNames extends SupervisionRecord {
-  teacher_name?: string;
   supervisor_name?: string;
 }
 
@@ -55,7 +55,7 @@ export async function listSupervisionRecords(
     const { teacher: _t, supervisor: _s, ...rest } = row;
     return {
       ...(rest as unknown as SupervisionRecord),
-      teacher_name: teacher?.full_name,
+      teacher_name: teacher?.full_name ?? null,
       supervisor_name: supervisor?.full_name,
     };
   });
@@ -84,7 +84,7 @@ export async function getSupervisionRecord(
   const { teacher: _t, supervisor: _s, ...rest } = data;
   return {
     ...(rest as SupervisionRecord),
-    teacher_name: teacher?.full_name,
+    teacher_name: teacher?.full_name ?? null,
     supervisor_name: supervisor?.full_name,
   };
 }
@@ -93,16 +93,18 @@ export async function createSupervisionRecord(
   data: Omit<SupervisionRecord, "id" | "created_at" | "total_score">
 ): Promise<SupervisionRecord> {
   const supabase = await createClient();
-  const total_score =
-    (data.lesson_plan_score ?? 0) +
-    (data.teaching_method_score ?? 0) +
-    (data.media_score ?? 0) +
-    (data.assessment_score ?? 0) +
-    (data.classroom_management_score ?? 0);
+
+  // Strip teacher_id if it's not a valid UUID (form may send free-text name instead)
+  const insert: Record<string, unknown> = { ...data };
+  if (insert.teacher_id && typeof insert.teacher_id === "string" && insert.teacher_id.length < 30) {
+    // looks like a name, not a UUID — move to teacher_name
+    insert.teacher_name = insert.teacher_name ?? insert.teacher_id;
+    delete insert.teacher_id;
+  }
 
   const { data: created, error } = await (supabase as any)
     .from("supervision_records")
-    .insert({ ...data, total_score })
+    .insert(insert)
     .select()
     .single();
 

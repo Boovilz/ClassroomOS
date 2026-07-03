@@ -84,8 +84,7 @@ export function CreateSupervisionDialog({ schoolId, supervisorId }: Props) {
         body: JSON.stringify({
           school_id: schoolId,
           supervisor_id: supervisorId,
-          // teacher_name is stored as free text; teacher_id would be a UUID from a teacher picker
-          teacher_name: teacherName.trim() || undefined,
+          teacher_name: teacherName.trim() || null,
           supervised_at: supervisedAt,
           subject: subject.trim() || undefined,
           classroom: classroom.trim() || undefined,
