@@ -20,6 +20,6 @@ export async function POST(request: NextRequest) {
     const record = await createSupervisionRecord(body);
     return NextResponse.json({ success: true, record }, { status: 201 });
   } catch (err) {
-    return NextResponse.json({ success: false, error: (err as Error).message }, { status: 400 });
+    return NextResponse.json({ success: false, error: (err as Error).message }, { status: 500 });
   }
 }
