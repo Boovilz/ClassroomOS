@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   BarChart3,
   Users,
+  Printer,
 } from "lucide-react";
 
 const lunchSubPages = [
@@ -27,6 +28,9 @@ const lunchSubPages = [
   { href: "/lunch/food-safety", label: "ความปลอดภัยอาหาร", icon: ShieldCheck },
   { href: "/lunch/analytics", label: "วิเคราะห์ข้อมูล", icon: BarChart3 },
   { href: "/lunch/parent", label: "พอร์ทัลผู้ปกครอง", icon: Users },
+  { href: "/lunch/reports/monthly-print", label: "พิมพ์รายงานรายเดือน", icon: Printer },
+  { href: "/lunch/reports/milk-print", label: "พิมพ์รายงานนม", icon: Printer },
+  { href: "/lunch/reports/tooth-print", label: "พิมพ์รายงานสุขภาพฟัน", icon: Printer },
 ];
 
 const mealTypeLabel: Record<string, string> = {

@@ -60,6 +60,9 @@ export default async function AcademicPage() {
           <Button asChild variant="outline">
             <Link href="/academic/stats">รายงานสถิติ</Link>
           </Button>
+          <Button asChild variant="outline">
+            <Link href="/academic/grade-report-print">พิมพ์ใบรายงานผลการเรียน</Link>
+          </Button>
         </div>
       </div>
 

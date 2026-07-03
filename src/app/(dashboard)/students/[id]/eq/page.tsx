@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EqAssessmentForm } from "@/components/eq/eq-assessment-form";
 import { EqHistoryList } from "@/components/eq/eq-history-list";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Printer } from "lucide-react";
 
 export default async function EqPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,10 +27,16 @@ export default async function EqPage({ params }: { params: Promise<{ id: string 
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold">ประเมินความฉลาดทางอารมณ์ (EQ)</h1>
           <p className="text-sm text-muted-foreground">{student.full_name}</p>
         </div>
+        <Button asChild variant="outline" size="sm" className="gap-2">
+          <Link href={`/students/${id}/eq/print`}>
+            <Printer className="h-4 w-4" />
+            พิมพ์รายงาน EQ
+          </Link>
+        </Button>
       </div>
 
       <Card className="glass-card">

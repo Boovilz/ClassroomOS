@@ -56,6 +56,9 @@ export default async function SubjectsPage() {
                       <Button asChild variant="outline" size="sm">
                         <Link href={`/academic/gradebook/${s.id}`}>สมุดคะแนน</Link>
                       </Button>
+                      <Button asChild variant="outline" size="sm" className="ml-2">
+                        <Link href={`/academic/pp5-subject-print?subjectId=${s.id}`}>พิมพ์ ปพ.5</Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

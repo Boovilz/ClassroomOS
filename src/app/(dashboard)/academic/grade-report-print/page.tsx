@@ -94,6 +94,24 @@ export default async function GradeReportPrintPage({
   const sorted = [...rows].filter((r) => r.average !== null).sort((a, b) => (b.average ?? 0) - (a.average ?? 0));
   sorted.forEach((r, i) => { r.rank = i + 1; });
 
+  // If no grade specified, show a selector
+  if (!grade) {
+    const beNow = new Date().getFullYear() + 543;
+    const { data: classrooms } = await supabase
+      .from("students")
+      .select("grade, classroom")
+      .eq("school_id", schoolId)
+      .is("deleted_at", null)
+      .not("grade", "is", null)
+      .not("classroom", "is", null);
+
+    const uniqueGrades = [...new Set((classrooms ?? []).map((c) => c.grade).filter(Boolean))].sort();
+    const uniqueClassrooms = [...new Set((classrooms ?? []).map((c) => c.classroom).filter(Boolean))].sort();
+
+    const { default: GradeReportSelector } = await import("./grade-report-selector");
+    return <GradeReportSelector grades={uniqueGrades as string[]} classrooms={uniqueClassrooms as string[]} defaultYear={beNow} />;
+  }
+
   return (
     <GradeReportPrintClient
       schoolName={school?.name ?? ""}
