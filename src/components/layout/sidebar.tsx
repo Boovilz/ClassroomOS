@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   ClipboardCheck,
   Bell,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/types";
@@ -47,6 +48,7 @@ const NAV_ITEMS = [
   { href: "/communication", label: "สื่อสารผู้ปกครอง", icon: MessageCircle },
   { href: "/ai", label: "AI ผู้ช่วยอัจฉริยะ", icon: Sparkles },
   { href: "/parent-portal", label: "พอร์ทัลผู้ปกครอง", icon: Users },
+  { href: "/calendar", label: "ปฏิทินกลาง", icon: CalendarDays },
   { href: "/notifications", label: "การแจ้งเตือน", icon: Bell },
   { href: "/reports", label: "รายงาน", icon: BarChart3 },
   { href: "/settings", label: "ตั้งค่า", icon: Settings },
