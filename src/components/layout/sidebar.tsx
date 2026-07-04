@@ -26,18 +26,22 @@ import {
   Bell,
   CalendarDays,
   Zap,
+  Search,
+  TableProperties,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/types";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "แดชบอร์ด", icon: LayoutDashboard },
-  { href: "/students", label: "นักเรียน", icon: GraduationCap },
+  { href: "/dashboard",   label: "แดชบอร์ด",          icon: LayoutDashboard },
+  { href: "/search",      label: "ค้นหาทั่���ระบบ",      icon: Search },
+  { href: "/students",    label: "นักเรียน",            icon: GraduationCap },
   { href: "/attendance", label: "การเช็คชื่อ", icon: CheckSquare },
   { href: "/behavior", label: "พฤติกรรม & XP", icon: Star },
   { href: "/leaderboard", label: "กระดานผู้นำ", icon: Trophy },
   { href: "/reward-shop", label: "ร้านค้ารางวัล", icon: Gift },
-  { href: "/academic", label: "ผลการเรียน", icon: BookOpen },
+  { href: "/academic",    label: "ผลการเรียน",          icon: BookOpen },
+  { href: "/timetable",   label: "ตารางเรียน",          icon: TableProperties },
   { href: "/finance", label: "การเงินห้องเรียน", icon: Wallet },
   { href: "/health", label: "สุขภาพนักเรียน", icon: HeartPulse },
   { href: "/lunch", label: "อาหารกลางวัน", icon: Utensils },
