@@ -176,6 +176,12 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-1.5">
+            <Link href={`/students/${id}/timeline`}>
+              <span className="text-base">📅</span>
+              Timeline
+            </Link>
+          </Button>
           {student.risk_level && (
             <Badge variant={riskVariant[student.risk_level]}>ความเสี่ยง: {riskLabel[student.risk_level]}</Badge>
           )}

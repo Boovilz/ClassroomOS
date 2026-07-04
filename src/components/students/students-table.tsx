@@ -471,6 +471,11 @@ export function StudentsTable({ data, schoolId }: { data: StudentRow[]; schoolId
                   <Eye className="h-4 w-4" />
                 </Link>
               </Button>
+              <Button variant="ghost" size="icon" asChild title="Student Timeline">
+                <Link href={`/students/${student.id}/timeline`}>
+                  <span className="text-sm">📅</span>
+                </Link>
+              </Button>
               <StudentFormDialog
                 schoolId={student.school_id}
                 trigger={
