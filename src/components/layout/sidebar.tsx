@@ -28,13 +28,14 @@ import {
   Zap,
   Search,
   TableProperties,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/types";
 
 const NAV_ITEMS = [
   { href: "/dashboard",   label: "แดชบอร์ด",          icon: LayoutDashboard },
-  { href: "/search",      label: "ค้นหาทั่���ระบบ",      icon: Search },
+  { href: "/search",      label: "ค้นหาทั่วระบบ",      icon: Search },
   { href: "/students",    label: "นักเรียน",            icon: GraduationCap },
   { href: "/attendance", label: "การเช็คชื่อ", icon: CheckSquare },
   { href: "/behavior", label: "พฤติกรรม & XP", icon: Star },
@@ -62,42 +63,92 @@ const NAV_ITEMS = [
 
 const SUPER_ADMIN_NAV_ITEM = { href: "/admin", label: "ผู้ดูแลระบบสูงสุด", icon: ShieldCheck };
 
-export function Sidebar({ role }: { role?: Role | null }) {
+function NavItems({ items, pathname, onNavigate }: {
+  items: typeof NAV_ITEMS;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  return (
+    <nav className="flex-1 space-y-1 overflow-y-auto">
+      {items.map(({ href, label, icon: Icon }) => {
+        const active = pathname === href || pathname.startsWith(`${href}/`);
+        return (
+          <Link
+            key={href}
+            href={href}
+            onClick={onNavigate}
+            className={cn(
+              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+              active
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+            <span>{label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function BrandLogo() {
+  return (
+    <div className="mb-6 flex items-center gap-2 px-2">
+      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold">
+        T
+      </div>
+      <div>
+        <p className="text-sm font-semibold leading-tight">Teacher</p>
+        <p className="text-sm font-semibold leading-tight">Classroom OS</p>
+      </div>
+    </div>
+  );
+}
+
+export function Sidebar({ role, mobileOpen, onClose }: {
+  role?: Role | null;
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}) {
   const pathname = usePathname();
   const items = role === "super_admin" ? [...NAV_ITEMS, SUPER_ADMIN_NAV_ITEM] : NAV_ITEMS;
 
   return (
-    <aside className="hidden md:flex h-screen w-64 flex-col border-r border-border bg-card/60 backdrop-blur-xl px-4 py-6">
-      <div className="mb-6 flex items-center gap-2 px-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold">
-          T
-        </div>
-        <div>
-          <p className="text-sm font-semibold leading-tight">Teacher</p>
-          <p className="text-sm font-semibold leading-tight">Classroom OS</p>
-        </div>
-      </div>
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex h-screen w-64 flex-col border-r border-border bg-card/60 backdrop-blur-xl px-4 py-6">
+        <BrandLogo />
+        <NavItems items={items} pathname={pathname} />
+      </aside>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto">
-        {items.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span>{label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-    </aside>
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Mobile drawer */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-border bg-card backdrop-blur-xl px-4 py-6 transition-transform duration-300 md:hidden",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex items-center justify-between mb-6">
+          <BrandLogo />
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <NavItems items={items} pathname={pathname} onNavigate={onClose} />
+      </aside>
+    </>
   );
 }

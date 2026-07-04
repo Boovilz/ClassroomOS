@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Menu } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -14,14 +15,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function Topbar() {
+export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   return (
-    <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-card/60 backdrop-blur-xl px-6">
-      <div className="w-full max-w-md">
-        <SearchTrigger />
+    <header className="flex h-16 items-center justify-between gap-2 border-b border-border bg-card/60 backdrop-blur-xl px-4 md:px-6">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        {/* Hamburger — mobile only */}
+        <button
+          onClick={onMenuClick}
+          className="md:hidden rounded-lg p-1.5 text-muted-foreground hover:bg-muted shrink-0"
+          aria-label="เปิดเมนู"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <div className="w-full max-w-md">
+          <SearchTrigger />
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4 shrink-0">
         <ThemeToggle />
         <NotificationBell />
         <DropdownMenu>

@@ -1,6 +1,5 @@
-import { Sidebar } from "@/components/layout/sidebar";
-import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase/server";
+import { DashboardShell } from "@/components/layout/dashboard-shell";
 
 export default async function DashboardLayout({
   children,
@@ -12,12 +11,8 @@ export default async function DashboardLayout({
     : { data: null };
 
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar role={profile?.role ?? null} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
-    </div>
+    <DashboardShell role={profile?.role ?? null}>
+      {children}
+    </DashboardShell>
   );
 }

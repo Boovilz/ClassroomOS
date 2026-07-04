@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, Plus, Download,
-  CalendarDays, LayoutList, Grid3x3, CalendarRange,
+  CalendarDays, LayoutList, Grid3x3, CalendarRange, SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +66,7 @@ export default function CalendarPage() {
   const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null);
   const [detailEvent, setDetailEvent] = useState<CalendarEvent | null>(null);
   const [defaultDate, setDefaultDate] = useState<string>("");
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   // Date range to fetch
   const fetchRange = useCallback(() => {
@@ -273,10 +274,40 @@ export default function CalendarPage() {
           <Button variant="ghost" size="icon" title="ส่งออก ICS" onClick={() => exportICS(filteredEvents)}>
             <Download className="h-4 w-4" />
           </Button>
+          {/* Mobile filter toggle */}
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileFilterOpen(o => !o)}>
+            <SlidersHorizontal className="h-4 w-4" />
+          </Button>
           <Button size="sm" onClick={() => openCreate()} className="gap-1 hidden sm:flex">
             <Plus className="h-3.5 w-3.5" /> สร้าง
           </Button>
         </div>
+
+        {/* Mobile filter panel */}
+        {mobileFilterOpen && (
+          <div className="lg:hidden border-b border-border px-4 py-3 flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => openCreate()} className="gap-1 sm:hidden">
+              <Plus className="h-3.5 w-3.5" /> สร้าง
+            </Button>
+            {ALL_EVENT_TYPES.map(t => {
+              const colors = EVENT_COLORS[t];
+              const active = activeTypes.has(t);
+              return (
+                <button
+                  key={t}
+                  onClick={() => toggleType(t)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition-colors",
+                    active ? cn(colors.bg, colors.text, "border-transparent") : "border-border text-muted-foreground"
+                  )}
+                >
+                  <span className={cn("h-2 w-2 rounded-full shrink-0", active ? colors.dot : "bg-muted-foreground/40")} />
+                  {EVENT_TYPE_LABELS[t]}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Calendar body */}
         <div className="flex-1 overflow-hidden">

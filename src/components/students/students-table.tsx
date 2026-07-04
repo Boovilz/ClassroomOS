@@ -698,7 +698,7 @@ export function StudentsTable({ data, schoolId }: { data: StudentRow[]; schoolId
         </DialogContent>
       </Dialog>
 
-      <div className="rounded-md border bg-card">
+      <div className="rounded-md border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (
