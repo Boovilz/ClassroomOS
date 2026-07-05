@@ -167,7 +167,7 @@ function ActionsStep({ actions, onChange }: {
       <p className="text-sm text-muted-foreground">กำหนดสิ่งที่ระบบจะทำเมื่อ Workflow ทำงาน</p>
       {actions.length === 0 && (
         <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-border rounded-2xl">
-          <p className="text-sm">ยังไม่มี Action — กด "เพิ่ม Action" เพื่อเริ่มต้น</p>
+          <p className="text-sm">ยังไม่มี Action — กด &quot;เพิ่ม Action&quot; เพื่อเริ่มต้น</p>
         </div>
       )}
       {actions.map((action, idx) => {

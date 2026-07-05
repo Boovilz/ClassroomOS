@@ -64,7 +64,7 @@ export function QrCardsGrid({ students, schoolName, academicYear }: { students: 
     return () => {
       cancelled = true;
     };
-  }, [students]);
+  }, [students, schoolName, academicYear]);
 
   if (!cards) {
     return <p className="text-sm text-muted-foreground">กำลังสร้าง QR...</p>;

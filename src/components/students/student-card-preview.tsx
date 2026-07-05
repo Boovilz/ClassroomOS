@@ -146,6 +146,7 @@ export function StudentCardPreview({ student, school, config }: StudentCardPrevi
           {config.showPhoto && (
             <div className="flex-shrink-0">
               {student.profile_picture_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={student.profile_picture_url}
                   alt={student.full_name}
