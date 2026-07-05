@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import QRCode from "qrcode";
 import { User } from "lucide-react";
 
 export interface CardConfig {
@@ -77,8 +79,28 @@ function GenderLabel({ gender }: { gender?: string | null }) {
   return <span>{gender}</span>;
 }
 
+function QRCodeCanvas({ code }: { code: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    QRCode.toCanvas(canvasRef.current, code, {
+      width: 56,
+      margin: 1,
+      color: { dark: "#111111", light: "#ffffff" },
+    });
+  }, [code]);
+
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <canvas ref={canvasRef} width={56} height={56} />
+      <span className="text-[8px] tracking-widest text-gray-700 font-mono">{code}</span>
+    </div>
+  );
+}
+
 function BarcodeStripes({ code }: { code: string }) {
-  // Simple CSS-based barcode visual
+  // Use inline style (not Tailwind bg class) so print doesn't strip background colors
   return (
     <div className="flex flex-col items-center gap-0.5">
       <div className="flex items-end gap-px h-8">
@@ -89,8 +111,7 @@ function BarcodeStripes({ code }: { code: string }) {
           return (
             <div
               key={i}
-              className="bg-gray-900"
-              style={{ width: `${width}px`, height: `${height}px` }}
+              style={{ width: `${width}px`, height: `${height}px`, backgroundColor: "#111111" }}
             />
           );
         })}
@@ -166,10 +187,10 @@ export function StudentCardPreview({ student, school, config }: StudentCardPrevi
               )}
             </div>
 
-            {/* Barcode */}
+            {/* QR Code */}
             {config.showBarcode && (
               <div className="mt-1">
-                <BarcodeStripes code={student.student_code} />
+                <QRCodeCanvas code={student.student_code} />
               </div>
             )}
           </div>

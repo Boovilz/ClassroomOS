@@ -147,7 +147,7 @@ export function CardsDesigner({ school }: CardsDesignerProps) {
     { key: "showClassroom", label: "แสดงชั้นเรียน" },
     { key: "showGender", label: "แสดงเพศ" },
     { key: "showBloodType", label: "แสดงหมู่โลหิต" },
-    { key: "showBarcode", label: "แสดงบาร์โค้ด" },
+    { key: "showBarcode", label: "แสดง QR Code" },
   ];
 
   const backChecks: { key: keyof CardConfig; label: string }[] = [
