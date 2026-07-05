@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { User } from "lucide-react";
 
@@ -55,12 +55,13 @@ const themeAccentClass: Record<CardConfig["theme"], string> = {
 
 function formatBirthDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "-";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear() + 543; // Convert to Buddhist Era
-  return `${day}/${month}/${year}`;
+  // Parse YYYY-MM-DD without timezone shift by splitting manually
+  const parts = dateStr.split("T")[0].split("-");
+  if (parts.length !== 3) return dateStr;
+  const [y, m, d] = parts.map(Number);
+  if (!y || !m || !d) return dateStr;
+  const year = y < 2500 ? y + 543 : y; // convert Gregorian → Buddhist Era only if not already BE
+  return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${year}`;
 }
 
 function maskNationalId(id: string | null | undefined): string {
@@ -79,47 +80,28 @@ function GenderLabel({ gender }: { gender?: string | null }) {
   return <span>{gender}</span>;
 }
 
-function QRCodeCanvas({ code }: { code: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+function QRCodeImg({ code }: { code: string }) {
+  const [dataUrl, setDataUrl] = useState<string>("");
 
   useEffect(() => {
-    if (!canvasRef.current) return;
-    QRCode.toCanvas(canvasRef.current, code, {
-      width: 56,
+    QRCode.toDataURL(code, {
+      width: 64,
       margin: 1,
       color: { dark: "#111111", light: "#ffffff" },
-    });
+    }).then(setDataUrl).catch(() => {});
   }, [code]);
 
+  if (!dataUrl) return null;
+
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <canvas ref={canvasRef} width={56} height={56} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={dataUrl} alt={`QR ${code}`} width={64} height={64} style={{ imageRendering: "pixelated" }} />
       <span className="text-[8px] tracking-widest text-gray-700 font-mono">{code}</span>
     </div>
   );
 }
 
-function BarcodeStripes({ code }: { code: string }) {
-  // Use inline style (not Tailwind bg class) so print doesn't strip background colors
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <div className="flex items-end gap-px h-8">
-        {Array.from({ length: 30 }).map((_, i) => {
-          const charCode = code.charCodeAt(i % code.length) + i;
-          const height = 16 + (charCode % 16);
-          const width = i % 3 === 0 ? 2 : 1;
-          return (
-            <div
-              key={i}
-              style={{ width: `${width}px`, height: `${height}px`, backgroundColor: "#111111" }}
-            />
-          );
-        })}
-      </div>
-      <span className="text-[8px] tracking-widest text-gray-700 font-mono">{code}</span>
-    </div>
-  );
-}
 
 export function StudentCardPreview({ student, school, config }: StudentCardPreviewProps) {
   const header = themeHeaderClass[config.theme];
@@ -191,7 +173,7 @@ export function StudentCardPreview({ student, school, config }: StudentCardPrevi
             {/* QR Code */}
             {config.showBarcode && (
               <div className="mt-1">
-                <QRCodeCanvas code={student.student_code} />
+                <QRCodeImg code={student.student_code} />
               </div>
             )}
           </div>
