@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Prompt, Sarabun } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { CookieConsent } from "@/components/cookie-consent";
 import "./globals.css";
 
 const prompt = Prompt({
@@ -30,6 +31,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           {children}
           <Toaster richColors position="top-center" />
+          <CookieConsent />
         </ThemeProvider>
       </body>
     </html>
